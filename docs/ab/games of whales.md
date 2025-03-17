@@ -1,11 +1,6 @@
-+++
-date = '2025-03-17T10:20:26Z'
-draft = false
-title = 'Games of Whales'
-+++
+# Games of Whales
 
-## Games of Whales
-
+Data for Games of Whales
 
 ### Signatures
 

@@ -1,11 +1,6 @@
-+++
-date = '2025-03-17T10:20:26Z'
-draft = false
-title = 'LaunchDarkly'
-+++
+# LaunchDarkly
 
-## LaunchDarkly
-
+Data for LaunchDarkly
 
 ### Signatures
 

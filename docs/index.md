@@ -1,3 +1,3 @@
-## AB Testing in Apps
+# App History
 
-Start of a small project to do AP testing
+Beginnings of the documentation
