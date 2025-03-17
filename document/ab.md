@@ -1,7 +1,7 @@
 +++
-date = '{{ .Date }}'
+date = '2025-03-17T10:20:26Z'
 draft = false
-title = '{{ replace .File.ContentBaseName "-" " " | title }}'
+title = '$library'
 +++
 
 ## $library

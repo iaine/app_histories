@@ -18,4 +18,5 @@ for key in testlibs.keys():
     with open('ab.md', 'r') as fh:
         src = Template(fh.read())
         result = src.substitute(testlibs[key])
-        print(result)
+        with open("../docs/content/ab/" + testlibs[key]['library'].replace("?", "").lower() + ".md", "w") as f:
+            f.write(result)
