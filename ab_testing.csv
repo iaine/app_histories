@@ -23,17 +23,17 @@ io.qonversion.android.sdk,Qonversion,Qonversion,
 com.swrve.sdk.android,Swrv,Swrv,
 com.apphud.ApphudSDK-Android,AppHud,AppHud,
 ,SuperSonic Wisdom (Unity Livegames),Unity,Games
-com.gameofwhales.gow,Games of Whales,,Games
-com.gameofwhales.sdk,Games of Whales,,Games
-com.applause,Applause,,AB
+com.gameofwhales.gow,Games of Whales,Games of Whales,Games
+com.gameofwhales.sdk,Games of Whales,Games of Whales,Games
+com.applause,Applause,Applause,AB
 com.huawei.hwid,HMS Core,Huawei,
 com.huawei.hms,HMS Core,Huawei,
 com.huawei.agconnect,HMS Core,Huawei,
 com.huawei.updatesdk,HMS Core,Huawei,
-,Splitforce,iOS only?,
-com.umeng.commonsdk,Umeng,,
-com.umeng.analytics.game,Umeng,,
-com.gameanalytics.sdk,GameAnalytics,,
+,Splitforce,Splitforce, iOS only?,
+com.umeng.commonsdk,Umeng,Umeng,
+com.umeng.analytics.game,Umeng,Umeng,
+com.gameanalytics.sdk,GameAnalytics,GameAnalytics,
 com.playnomics.android.sdk.Playnomics,Playnomics,,
 com.sensorsdata.abtest.SensorsABTest,SensorsData,Shence?,
 com.sensorsdata.abtest.SensorsABTestConfigOptions,SensorsData,Shence?,
