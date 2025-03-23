@@ -5,6 +5,7 @@ import glob
 import os
 
 from ab import AB
+from localisation import Localisation
 
 class Read_Interface():
 
@@ -22,7 +23,7 @@ o	Process:
         '''
         pass
 
-    def extract_localisation(self):
+    def extract_localisation(self,basepath, pkg_name, extracted):
         '''
         •	Files to Inspect: res/values-<language> folders contain strings for different languages.
 •	Tools: APKTool and Android Studio for language comparison.
@@ -31,7 +32,13 @@ o	Process:
 2.	Look for region-specific text or UI elements, such as currency or date formats.
 
         '''
-        pass
+        local = Localisation()
+        localised = local.get_values(basepath + pkg_name)
+
+        #read the package and then write to CSV file
+        with open(os.path.join(extracted, pkg_name[:-4] + ".csv"), "w+") as fh:
+            for p in localised:
+                if p != "": fh.write("{}, {}\n".format(pkg_name, p))
 
     def extract_ab_testing(self, basepath, pkg_name, extracted):
         ab = AB()

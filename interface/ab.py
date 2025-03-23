@@ -72,11 +72,10 @@ class AB():
         '''
         Use grep to search decompiled technologies
         '''
-        re.compile(string_to_find, flags = re.I)
+        re.compile(r'"'+string_to_find+'"', flags = re.I)
         files = self.get_files(basepath)
         found = []
         for f in files:
             with open(files, 'r') as fh:
                 found_str = re.search(fh.read())
                 if len(found_str) > 0: found = found + found_str
-        pass
