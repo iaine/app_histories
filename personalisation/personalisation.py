@@ -21,7 +21,7 @@ class Personalisation():
         :param colours_xml - Colours file
         '''
         colours = []
-        if os.path.exists(colours_xml):
+        if os.path.exists(colours_xml + "/res/values/colors.xml"):
             tree = ET.parse(colours_xml)
             root = tree.getroot()
 
