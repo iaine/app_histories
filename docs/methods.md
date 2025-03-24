@@ -25,7 +25,7 @@ ab.extract_localisation("./extracted/", apk_name, "./localisation")
 Further details:
 [Localisation](../tutorials/localisation) tutorial
 
-#### Manifest details
+#### Manifest
 
 ```
 ab = Manifest()
