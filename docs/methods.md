@@ -15,6 +15,7 @@ ab.extract_ab_testing("./extracted/", apk_name, "./ab")
 
 Further details:
 [AB Tutorial](../tutorials/ab) tutorial
+
 #### Localisation details
 
 ```
@@ -23,6 +24,15 @@ ab.extract_localisation("./extracted/", apk_name, "./localisation")
 ```
 Further details:
 [Localisation](../tutorials/localisation) tutorial
+
+#### Manifest details
+
+```
+ab = Manifest()
+ab.get_manifest("./extracted/", apk_name, "./localisation")
+```
+Further details:
+[Manifests](../tutorials/manifest) tutorial
 
 #### Personalisation
 
