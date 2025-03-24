@@ -7,6 +7,6 @@ setup(name='cast',
       description='CIM App Studies Tools',
       author='Iain Emsley',
       author_email='iain.emsley@warwick.ac.uk',
-      url='https://www.python.org/sigs/distutils-sig/',
-      packages=[ ],
+      url='https://warwick.ac.uk/fac/cross_fac/cim/people/iain-emsley',
+      packages=[ xml.etree ],
      )
