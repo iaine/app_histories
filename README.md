@@ -10,7 +10,11 @@ If you have any of the above, please raise them on the issue queue or send a pul
 
 ## Usage
 
-Get the AB libraries
+An initial overview of using the library. Please note that this library is under development and likely to change. 
+
+It assumes that you are using a tool like JADX, however it may wokr with Androguard. This is not fully tested yet. 
+
+Get the AB libraries using our [list](ab). 
 
 ```
 ab = Read_Interface()
