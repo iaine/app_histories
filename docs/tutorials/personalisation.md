@@ -1,4 +1,4 @@
-## Personalisation
+# Personalisation
 
 Apps may be personalised by developers. This is an initial approach to identifying such changes in the UI using static methods. 
 
