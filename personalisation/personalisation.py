@@ -10,8 +10,7 @@ import xml.etree.ElementTree as ET
 
 
 class Personalisation():
-
-
+i
     def __init__(self):
         pass
 
@@ -21,7 +20,7 @@ class Personalisation():
         :param colours_xml - Colours file
         '''
         colours = []
-        if os.path.exists(colours_xml + "/res/values/colors.xml"):
+        if os.path.exists(colours_xml + "/resources/res/values/colors.xml"):
             tree = ET.parse(colours_xml)
             root = tree.getroot()
 
