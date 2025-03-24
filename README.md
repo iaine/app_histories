@@ -1,4 +1,4 @@
-## CIM App Studies Toolkit
+## CIM App Studies Tools
 
 Initial toolkit to work with decompiled apps. 
 
