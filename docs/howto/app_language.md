@@ -6,13 +6,13 @@ I used the localisation code to find the filenames that contain localisations pa
 
 Using some R an Python code yet to be released, I managed to extract the country nad languages. 
 
-I filtered the data by country: in this IN, or India, as it has a range of languages. 
+I filtered the data by country: in this case IN, or India, as it has a range of languages. 
 
-![](./assets/meituan_language_country.png)
+![All languages for an app ](../assets/meituan_language_country.png)
 
 
 This provides a nice broad view of the territry. The data can be broken down further. In this case, I broke it down by major version number of the app as extracted while reading the permission from the manifests. 
 
-![](./assets/composite.png)
+![A Composite Image of Versions of an App wth its languages](../assets/composite.png)
 
 This offers many more different forms of reading that require further investigation. 
