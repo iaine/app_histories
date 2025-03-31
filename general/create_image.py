@@ -32,16 +32,16 @@ class Animate():
         except Exception as e:
             print(e)
 
-    def create_composite(self,imagedata, figuretitle):
+    def create_composite(self,imagedata, figuretitle, nrow=2, ncol=3):
         """
         Create composite grid
         """
 
         from mpl_toolkits.axes_grid1 import ImageGrid
 
-        fig = plt.figure(figsize=(6., 6.))
+        fig = plt.figure(figsize=(60., 60.))
         grid = ImageGrid(fig, 111,  # similar to subplot(111)
-                        nrows_ncols=(2, 3),  # creates 2x2 grid of Axes
+                        nrows_ncols=(nrow, ncol),  # creates 2x2 grid of Axes
                         axes_pad=0.1,  # pad between Axes in inch.
                         )
 
