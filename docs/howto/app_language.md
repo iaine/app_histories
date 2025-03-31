@@ -15,4 +15,4 @@ This provides a nice broad view of the territry. The data can be broken down fur
 
 ![](./assets/composite.png)
 
-This offers so many more different forms of reading. 
+This offers many more different forms of reading that require further investigation. 
