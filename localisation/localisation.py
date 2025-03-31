@@ -1,11 +1,13 @@
-import re
 import os
+import re
+
+import pandas as pd
 
 class Localisation():
 
     def __init__(self):
         self.langs = []
-        with open('./interface/language.txt', 'r') as f:
+        with open('./localisation/language.txt', 'r') as f:
             data = f.readlines()
             for d in data:
                 self.langs.append(d.split(',')[0])
@@ -31,3 +33,47 @@ class Localisation():
             if iso_lang.search(root): 
                 pkgs.add("/".join(path).replace(basepath.replace('/', '.'), ""))
         return pkgs
+
+    def merge_localise(self, main, local):
+        """
+            Merge the localised file with the main files
+        """
+        return pd.merge(main, locatl, on="sha")
+
+    def extract_locales(self, localised_file):
+        """
+            Extract local data from file
+        """
+
+        local_df = localised_df
+
+        local_df["language"] = local_df["local"].map(extract_language)
+        local_df["country"] = local_df["local"].map(extract_country)
+
+        return local_df
+
+    def extract_language (self, values):
+        """
+            Extract the language from the values
+        """
+        if len(values.split('-')) > 1:
+            return values.split('-')[1]
+
+        return ""
+
+    def extract_country (self, values):
+        """
+            Extract the language from the values
+        """
+        c = values.split('-')
+
+        if len(c) < 3: 
+            country = ""
+        else:
+            if c[2] in ["xlarge", 'mdpi']: country = ""
+            else:
+                country = c[2].strip()
+
+                if country.startswith("r"): 
+                    country = country.replace("r","")
+        return country
