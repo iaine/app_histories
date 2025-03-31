@@ -4,7 +4,7 @@ One way of using the localisation code is to create and use it to trace language
 
 I used the localisation code to find the filenames that contain localisations patterns. 
 
-Using some R an Python code yet to be released, I managed to extract the country nad languages. 
+Using some R an Python code yet to be released, I managed to extract the country and languages. 
 
 ```
 # First get the Androo Zoo list
