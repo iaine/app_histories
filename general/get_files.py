@@ -5,16 +5,13 @@ class GetFiles():
     def __init__(self):
         pass
 
-    def getfiles(self, base):
+    def get_source_dirs(self, base):
         '''
-            Function to get the file names
+            Function to get the surce directory names. 
         '''
 
         pkgs = set()
         bpath = base + "sources/"
         for root, dirs, files in os.walk(bpath):
-            path = root.split(os.sep)
-            for f in files:
-                path.append(f)
-                pkgs.add(".".join(path).replace(basepath.replace('/', '.'), ""))
+            pkgs.add(root.replace(basepath, ""))
         return pkgs
