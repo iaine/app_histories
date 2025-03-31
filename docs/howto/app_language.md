@@ -13,6 +13,6 @@ I filtered the data by country: in this case IN, or India, as it has a range of 
 
 This provides a nice broad view of the territry. The data can be broken down further. In this case, I broke it down by major version number of the app as extracted while reading the permission from the manifests. 
 
-![A Composite Image of Versions of an App wth its languages](../assets/composite.png)
+![A Composite Image of Versions of an App wth its languages](../assets/composite.jpg)
 
 This offers many more different forms of reading that require further investigation. 
