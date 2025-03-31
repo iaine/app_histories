@@ -12,7 +12,7 @@ class Animate():
     def __init__(self):
         pass
 
-    def animate_images(self, base_dir, onscreen=1000, fmt="png"):
+    def animate_images(self, image_list, outfile, onscreen=1000, fmt="png"):
         """
             Method to create a video from still images
         """
@@ -20,11 +20,10 @@ class Animate():
             raise Exception("Directory dies not exist")
 
         try:
-            img = glob(base_dir +"/" + "*." + fmt)
             frames = []
             fig = plt.figure()
-            for i in range(1,len(img)):
-                _img = np.asarray(Image.open(img[i]))
+            for i in range(1,len(image_list)):
+                _img = np.asarray(Image.open(image_list[i]))
                 frames.append([plt.imshow(_img, animated=True)])
 
             ani = animation.ArtistAnimation(fig, frames, interval=onscreen, blit=True,
