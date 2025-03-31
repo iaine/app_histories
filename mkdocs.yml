@@ -1,1 +1,4 @@
 'site_name': "CAST"
+markdown_extensions:
+  - attr_list
+  - md_in_html
