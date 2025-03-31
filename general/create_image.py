@@ -29,5 +29,25 @@ class Animate():
             ani = animation.ArtistAnimation(fig, frames, interval=onscreen, blit=True,
                                             repeat_delay=1000)
             ani.save(outfile)
-        except Exception, e:
+        except Exception as e:
             print(e)
+
+    def create_composite(self,imagedata, figuretitle):
+        """
+        Create composite grid
+        """
+
+        from mpl_toolkits.axes_grid1 import ImageGrid
+
+        fig = plt.figure(figsize=(6., 6.))
+        grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                        nrows_ncols=(2, 3),  # creates 2x2 grid of Axes
+                        axes_pad=0.1,  # pad between Axes in inch.
+                        )
+
+        for ax, im in zip(grid, imagedata):
+            # Iterating over the grid returns the Axes.
+            ax.imshow(im)
+            ax.set_axis_off()
+
+        plt.savefig(figuretitle)
