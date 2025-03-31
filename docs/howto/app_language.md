@@ -24,7 +24,7 @@ I filtered the data by country in a CSV file. In this case, I used IN, or India,
 
 ![All languages for an app ](../assets/meituan_language_country.png)
 
-This provides a nice broad view of the territry. The data can be broken down further. In this case, I broke it down by major version number of the app as extracted while reading the permission from the manifests. 
+This provides a nice broad view of the territory and the data can be broken down further. In this case, I broke it down by major version number of the app as extracted while reading the permission from the manifests. 
 
 ![A Composite Image of Versions of an App with its languages](../assets/composite.jpg)
 
