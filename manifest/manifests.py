@@ -9,7 +9,7 @@ class Manifest():
     def __init__(self):
         pass
 
-    def get_manifest(self, manifestfile):
+    def get_manifest(self, base_dir, manifestfile, extract_dir):
         '''
             Read the manifest file. Extract permissions, features, version, code
         '''
@@ -38,7 +38,7 @@ class Manifest():
             if features is not None and len(features) > 0:
                 fs = ';'.join(features)
 
-            fh = open("manifest_" + directory + ".csv", 'w')
+            fh = open(extract_dir + "/manifest_" + directory + ".csv", 'w')
             data = "{0}, {1}, {2}, {3}, {4}".format(directory, ps, fs, package, version)
             fh.write(data)
             fh.close()
