@@ -10,6 +10,32 @@ class Helper():
     def __init__(self):
         pass
 
+    def get_software_version(self, dataframe, version, software_version):
+        '''
+        Helper function to get software version
+        '''
+
+        dataframe[software_version] = dataframe[version].apply(self._software_version)
+
+        return dataframe
+
+    def _software_version(self, softver):
+        '''
+        Function to identify and clean software. 
+        Works against the constraint of needing numeric values for graphs. 
+        '''
+        spl_ver = softver.split(".")
+
+        if len(spl_ver) > 1:
+            if "_" in spl_ver[-1]:
+                _end = spl_ver[-1].split("_")[0]
+                spl_ver[1:] += _end
+            
+            return float(spl_ver[0] +  "." + spl_ver[1:] )
+        else:
+            return float(softver)
+
+
     def write_pkg_csv(self, pkg_name, data, filename):
         """
         
