@@ -48,8 +48,8 @@ class Animate():
         for ax, im in zip(grid, imagedata):
 
             if type(im) == str:
-                raise Exception("Incorrect format. Image data required")
-                
+                raise Exception("Incorrect format. Image data required not its path")
+
             # Iterating over the grid returns the Axes.
             ax.imshow(im)
             # Let's remove the individual axis
