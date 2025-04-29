@@ -46,8 +46,13 @@ class Animate():
                         )
 
         for ax, im in zip(grid, imagedata):
+
+            if type(im) == str:
+                raise Exception("Incorrect format. Image data required")
+                
             # Iterating over the grid returns the Axes.
             ax.imshow(im)
+            # Let's remove the individual axis
             ax.set_axis_off()
 
-        plt.savefig(figuretitle)
+        plt.savefig(figuretitle)    
