@@ -16,19 +16,24 @@ class Animate():
         """
             Method to create a video from still images
         """
-        if base_dir is None or not os.path.exits(base_dir):
-            raise Exception("Directory dies not exist")
+        #if base_dir is None or not os.path.exits(base_dir):
+        #    raise Exception("Directory dies not exist")
 
         try:
             frames = []
-            fig = plt.figure()
+
+            fig, ax = plt.subplots()
+            ax.set_axis_off()
             for i in range(1,len(image_list)):
+                
                 _img = np.asarray(Image.open(image_list[i]))
                 frames.append([plt.imshow(_img, animated=True)])
 
-            ani = animation.ArtistAnimation(fig, frames, interval=onscreen, blit=True,
-                                            repeat_delay=1000)
+            ani = animation.ArtistAnimation(fig=fig, artists=frames, interval=onscreen)
             ani.save(outfile)
+            #if gif required
+            #ani = animation.FuncAnimation(fig, frames, interval=40, blit=True, repeat=True, frames=100) 
+            #ani.save(outfile, dpi=300, writer=animation.PillowWriter(fps=25))
         except Exception as e:
             print(e)
 
