@@ -16,9 +16,7 @@ class Animate():
         """
             Method to create a video from still images
         """
-        #if base_dir is None or not os.path.exits(base_dir):
-        #    raise Exception("Directory dies not exist")
-
+        
         try:
             frames = []
 
