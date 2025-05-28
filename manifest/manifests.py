@@ -9,7 +9,7 @@ class Manifest():
     def __init__(self):
         pass
 
-    def get_manifest(self, base_dir, manifestfile, extract_dir):
+    def get_manifest(self, base_dir, directory, extract_dir):
         '''
             Read the manifest file. Extract permissions, features, version, code
         '''
@@ -30,6 +30,9 @@ class Manifest():
 
             package = root.get('package')
             version = root.get('{http://schemas.android.com/apk/res/android}versionName')
+            
+            ps = []
+            fs = []
 
             ps = self.list_to_string(permissions)
             fs = self.list_to_string(features)
