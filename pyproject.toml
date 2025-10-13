@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cim-app-studies-toolkit"
+version = "0.0.1"
+dependencies = [
+  "xml.etree",
+  "pandas",
+]
+
+authors = [
+  {name = "Iain Emsley", email = "iain.emsley@warwick.ac.uk"},
+]
+description = "Experimental toolkt to work with APK data"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+keywords = ["android", "digital method", "apps"]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Build Tools",
+
+  "Programming Language :: Python :: 3",
+]
+
+Homepage = "https://github.com/iaine/app_histories"
+Documentation = "https://github.com/iaine/app_histories"
+Repository = "https://github.com/iaine/app_histories.git"
+Issues = "https://github.com/iaine/app_histories/issues"
