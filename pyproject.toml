@@ -3,11 +3,12 @@ requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cim-app-studies-toolkit"
+name = "cim-app-histories-toolkit"
 version = "0.0.1"
 dependencies = [
   "xml.etree",
   "pandas",
+  "androguard",
 ]
 
 authors = [
