@@ -80,7 +80,7 @@ class Localisation():
 
     def extract_device(self, values):
         '''
-        
+          Find device specific aspects within the resource filenames. 
         '''
         device = []
         device_vals = ["hdpi", 'xxhdpi', "v4", 'land', 'night']
