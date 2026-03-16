@@ -1,6 +1,9 @@
 '''
 Extract files
 '''
+import os
+import subprocess
+from androguard import AnayzeAPK
 
 class Decompile():
 
@@ -24,7 +27,7 @@ class Decompile():
         '''
         pass
 
-    def extract_apk(self, path_to_apk):
+    def disassemble_apk(self, path_to_apk):
         """
             Extract the APK using Androguard. 
 
@@ -36,3 +39,9 @@ class Decompile():
         apk, d, dex = AnalyzeAPK(path_to_apk)
 
         return (apk, d, dex)
+
+    def decompile_apk (self, path_to_apk):
+        """
+            Extract the APK using JADX. 
+        """
+        pass
