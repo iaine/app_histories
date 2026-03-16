@@ -41,6 +41,9 @@ o	Process:
                 if p != "": fh.write("{}, {}\n".format(pkg_name, p))
 
     def extract_ab_testing(self, basepath, pkg_name, extracted):
+        """
+            Extract AB testing packages. 
+        """
         ab = AB()
         pkgs = ab.get_classes(basepath + pkg_name)
         pkg = ab.find_ab_by_package(basepath, pkgs)
