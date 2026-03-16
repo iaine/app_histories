@@ -1,4 +1,4 @@
-'site_name': "CAST"
+'site_name': "CIM App Histories Toolkit"
 markdown_extensions:
   - attr_list
   - md_in_html
