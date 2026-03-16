@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 
 
 class Personalisation():
-i
+
     def __init__(self):
         pass
 
