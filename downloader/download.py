@@ -18,7 +18,7 @@ def download(args:tuple)-> None:
         with open(basedir + "/" + apk_hash, 'w') as f:
             f.write(_apk.read())
 
-    except URLError, HTTPError, Exception as e:
+    except (URLError, HTTPError, Exception) as e:
         print(e)
 
 def main():
