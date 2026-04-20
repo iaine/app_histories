@@ -21,8 +21,10 @@ def download(args:tuple)-> None:
     except URLError, HTTPError, Exception as e:
         print(e)
 
-
-if __name__ == '__main__':
+def main():
+    """
+    
+    """
     init_len_files = 0
     try:
         if not os.path.exists("azkey.ini"):
@@ -57,16 +59,21 @@ if __name__ == '__main__':
     if init_len_files == final_list:
         print("All files downloaded")
     else:
+        print("Retrying failed files")
         re_run = [apk for apk in apks if apk not in final_apks]
         args_list = [(apk, api_key, basedir) for apk in re_run]
         with Pool(5) as p:
             p.map(download, args_list)
 
-        final_apks = [name for name in os.listdir('.') if os.path.isfile(name) and name.endswith('.apk')]
+        final_apks = [name for name in os.listdir(basedir) if os.path.isfile(name) and name.endswith('.apk')]
         final_list = len(final_apks)
         if init_len_files == final_list:
             print("All files downloaded at second try")
         else: 
-            fail = ";".join([name for name in os.listdir('.') if os.path.isfile(name) and name.endswith('.apk')])
+            fail = ";".join([name for name in os.listdir(basedir) if os.path.isfile(name) and name.endswith('.apk')])
             print(f"Sorry, these ones did not download {fail}")
+
+
+if __name__ == '__main__':
+    main()
 
