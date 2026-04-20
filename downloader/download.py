@@ -2,6 +2,8 @@ from multiprocessing import Process
 from urllib.request import urlopen
 from urllib.error import URLError, HTTPError
 import configparser
+import os
+import sys
 
 
 def download(args:tuple)-> None:
