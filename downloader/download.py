@@ -1,7 +1,7 @@
 from multiprocessing import Process
 from urllib.request import urlopen
 from urllib.error import URLError, HTTPError
-import configparser
+import tomllib
 import os
 import sys
 
@@ -23,6 +23,15 @@ def download(args:tuple)-> None:
     except (URLError, HTTPError, Exception) as e:
         print(e)
 
+def _read_config():
+    '''
+        Read the Config file
+    '''
+    with open("azkey.toml", "rb") as f:
+        data = tomllib.load(f)
+
+    return data
+
 def main():
     """
     
@@ -33,11 +42,10 @@ def main():
             raise Exception("An azkey.ini file is required.")
             sys.exit()
 
-        config = configparser.ConfigParser(allow_unnamed_section=True)
-        config.read("azkey.ini")
-        api_key = config.get(configparser.UNNAMED_SECTION, 'key')
-        basedir = config.get(configparser.UNNAMED_SECTION, 'basedir')
-        hash_file = config.get(configparser.UNNAMED_SECTION, 'input_file')
+        config = _read_config()
+        api_key = config['key']
+        basedir = config['basedir']
+        hash_file = config['input_file']
 
         if not os.path.exists(basedir): 
             os.mkdir(basedir)
