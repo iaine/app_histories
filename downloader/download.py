@@ -23,23 +23,50 @@ def download(args:tuple)-> None:
 
 
 if __name__ == '__main__':
-    basedir = ""
-    if not os.path.exists(basedir): 
-        os.mkdir(basedir)
+    init_len_files = 0
+    try:
+        if not os.path.exists("azkey.ini"):
+            raise Exception("An azkey.ini file is required.")
+            sys.exit()
 
-    with open("", "r") as fh:
-        apks = fh.readlines()
+        config = configparser.ConfigParser(allow_unnamed_section=True)
+        config.read("azkey.ini")
+        api_key = config.get(configparser.UNNAMED_SECTION, 'key')
+        basedir = config.get(configparser.UNNAMED_SECTION, 'basedir')
+        hash_file = config.get(configparser.UNNAMED_SECTION, 'input_file')
 
-    if len(apks) < 100:
-        print("Downloading. Not really appropriate for HPC. \
-            Consider using a high thoughput machine.")
+        if not os.path.exists(basedir): 
+            os.mkdir(basedir)
 
-    config = configparser.ConfigParser(allow_unnamed_section=True)
-    config.read("azkey.ini")
-    api_key = config.get(configparser.UNNAMED_SECTION, 'key')
-    basedir = config.get(configparser.UNNAMED_SECTION, 'basedir')
+        with open(hash_file, "r") as fh:
+            apks = fh.readlines()
+            init_len_files = len(apk)
+
+    except Exception as e:
+        print(e)
+
     # pass multiple args?
     # https://pytutorial.com/python-pool-map-pass-variables-efficiently-in-parallel-processing/
     args_list = [(apk, api_key, basedir) for apk in apks]
     with Pool(5) as p:
         p.map(download, args_list)
+
+    final_apks = [name for name in os.listdir('.') if os.path.isfile(name) and name.endswith('.apk')]
+    final_list = len(final_apks)
+
+    if init_len_files == final_list:
+        print("All files downloaded")
+    else:
+        re_run = [apk for apk in apks if apk not in final_apks]
+        args_list = [(apk, api_key, basedir) for apk in re_run]
+        with Pool(5) as p:
+            p.map(download, args_list)
+
+        final_apks = [name for name in os.listdir('.') if os.path.isfile(name) and name.endswith('.apk')]
+        final_list = len(final_apks)
+        if init_len_files == final_list:
+            print("All files downloaded at second try")
+        else: 
+            fail = ";".join([name for name in os.listdir('.') if os.path.isfile(name) and name.endswith('.apk')])
+            print(f"Sorry, these ones did not download {fail}")
+
