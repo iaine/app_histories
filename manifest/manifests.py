@@ -9,7 +9,41 @@ class Manifest():
     def __init__(self):
         pass
 
-    def get_manifest(self, base_dir, directory, extract_dir):
+    def get_manifest(self, apk):
+        """
+            Read disassemble manifest from Androguard
+        """
+        return (self._get_permissions,self._get_features, self._get_version, self._get_package)
+
+    def _get_permissions(self, apk):
+        """
+            Get the app permissions
+        """
+        return apk.get_permissions()
+
+    def _get_features(self, apk):
+        """
+            Get the app features 
+        """
+        return apk.get_features()
+
+    def _get_version(self, apk):
+        """
+            Get the app features 
+        """
+        return apk.get_version()
+
+    def _get_package(self, apk):
+        """
+            Get the app features 
+        """
+        return apk.get_package()
+
+    def _get_activities(self, apk):
+
+        return a.get_activities()
+
+    def get_manifest_xml(self, base_dir, directory, extract_dir):
         '''
             Read the manifest file. Extract permissions, features, version, code
         '''
