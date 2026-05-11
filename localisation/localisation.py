@@ -3,14 +3,38 @@ import re
 
 import pandas as pd
 
-class Localisation():
+class Locales():
 
     def __init__(self):
-        self.langs = []
+        #self.langs = []
         with open('./localisation/language.txt', 'r') as f:
             data = f.readlines()
-            for d in data:
-                self.langs.append(d.split(',')[0])
+            #for d in data:
+            #    #self.langs.append(d.split(',')[0])
+            self.langs = [ d.split(',')[0]for d in f.readlines() ]
+
+    def get_files(self, apk):
+        '''
+        Function to read the source files, find XMl files. 
+        We'll use this to read the filenames. 
+        '''
+        iso_lang = re.compile(r"-(?:b\\+)?(" + "|".join(self.langs) +")\\b", flags=re.I)
+        #test run with both regex.
+        content = [self.get_locale_values(file_name) for file_name in apk.get_files()\
+                    if "/res/" in file_name and iso_lang.search(file_name)]
+        return content
+
+    def get_locale_values (self, filename):
+        """
+        Get the local values from the APK
+        """
+
+        language = self.extract_language(filename)
+        country = self.extract_country(filename)
+        device = self.extract_device(filename)
+
+        return (language, country, device)
+
 
     def get_values(self, basepath):
         '''
@@ -32,25 +56,6 @@ class Localisation():
             if iso_lang.search(root): 
                 pkgs.add("/".join(path).replace(basepath.replace('/', '.'), ""))
         return pkgs
-
-    def merge_localise(self, main, local):
-        """
-            Merge the localised file with the main files
-        """
-        return pd.merge(main, local, on="sha")
-
-    def extract_locales(self, local_df):
-        """
-            Extract local data from file
-        """
-
-        #local_df = localised_df
-
-        local_df["language"] = local_df["local"].map(self.extract_language)
-        local_df["country"] = local_df["local"].map(self.extract_country)
-        local_df["device"] = local_df["local"].map(self.extract_device)
-
-        return local_df
 
     def extract_language (self, values):
         """
@@ -92,4 +97,4 @@ class Localisation():
         if len(device) > 1:
             return "".join(device)
 
-        return ""
+        return device
