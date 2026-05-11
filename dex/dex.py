@@ -16,7 +16,7 @@ class analyseDEX():
         '''
         return DEX(apk)
 
-    def strings(self, dexcode):
+    def http_strings(self, dexcode):
         '''
         Get strings from DEX code
 
