@@ -1,16 +1,13 @@
 import os
 import re
 
-import pandas as pd
+#import pandas as pd
 
 class Locales():
 
     def __init__(self):
-        #self.langs = []
+
         with open('./localisation/language.txt', 'r') as f:
-            data = f.readlines()
-            #for d in data:
-            #    #self.langs.append(d.split(',')[0])
             self.langs = [ d.split(',')[0]for d in f.readlines() ]
 
     def get_files(self, apk):
