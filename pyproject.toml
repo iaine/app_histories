@@ -1,32 +1,65 @@
 [build-system]
-requires = ["setuptools >= 77.0.3"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "cim_app_histories"
-version = "0.0.1"
-dependencies = [
-  "pandas",
-  "androguard",
-]
-
-authors = [
-  {name = "Iain Emsley", email = "iain.emsley@warwick.ac.uk"},
-]
+version = "0.0.2"
 description = "Experimental toolkit to work with APK data"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
 keywords = ["android", "digital method", "apps"]
+requires-python = ">=3.10"
+
+authors = [
+  {name = "Iain Emsley", email = "iain.emsley@warwick.ac.uk"},
+]
+
+# Everything the package imports at runtime must be declared here.
+# androguard is pinned to the 4.x API the code targets (the import
+# paths androguard.core.apk / androguard.core.dex moved in 4.0).
+dependencies = [
+  "pandas>=1.5",
+  "androguard>=4.0,<5",
+  "networkx>=2.6",
+  "loguru>=0.6",
+]
 
 classifiers = [
   "Development Status :: 3 - Alpha",
-
-  "Intended Audience :: Developers",
-  "Topic :: Software Development :: Build Tools",
-
+  "Intended Audience :: Science/Research",
+  "Topic :: Security",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 
-#[tool.setuptools]
-#package-dir = {"" = "app_histories"}
+[project.optional-dependencies]
+# Plotting/animation stack: not installed on HPC unless requested,
+# keeping cluster environments free of GUI toolkits.
+viz = [
+  "matplotlib>=3.5",
+  "numpy>=1.23",
+  "Pillow>=9.0",
+]
+dev = [
+  "pytest>=7",
+  "ruff>=0.4",
+]
+
+[project.scripts]
+cim-apps = "cim_app_histories.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/iaine/app_histories"
+Documentation = "https://iaine.github.io/app_histories/"
+Issues = "https://github.com/iaine/app_histories/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"cim_app_histories.ab" = ["*.csv"]
+"cim_app_histories.localisation" = ["*.txt"]
