@@ -29,8 +29,3 @@ classifiers = [
 
   "Programming Language :: Python :: 3",
 ]
-
-Homepage = "https://github.com/iaine/app_histories"
-Documentation = "https://github.com/iaine/app_histories"
-Repository = "https://github.com/iaine/app_histories.git"
-Issues = "https://github.com/iaine/app_histories/issues"
