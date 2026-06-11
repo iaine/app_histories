@@ -29,3 +29,5 @@ classifiers = [
 
   "Programming Language :: Python :: 3",
 ]
+
+py_modules = "app_histories"
