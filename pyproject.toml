@@ -30,4 +30,5 @@ classifiers = [
   "Programming Language :: Python :: 3",
 ]
 
-packages = "app_histories"
+[tool.setuptools]
+package-dir = {"" = "app_histories"}
