@@ -1,11 +1,11 @@
 """
 Functions to work on the DEX code
 """
-from androguard.core.dex import DEX
-import re
 import os
+import re
 
-from androguard.core.analysis import Analysis
+from androguard.core.dex import DEX
+from androguard.core.analysis.analysis import Analysis
 
 class analyseDEX():
 
