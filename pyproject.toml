@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "cim-app-histories-toolkit"
 version = "0.0.1"
 dependencies = [
-  "xml.etree",
   "pandas",
   "androguard",
   "loguru",
