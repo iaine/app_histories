@@ -13,7 +13,7 @@ dependencies = [
 authors = [
   {name = "Iain Emsley", email = "iain.emsley@warwick.ac.uk"},
 ]
-description = "Experimental toolkt to work with APK data"
+description = "Experimental toolkit to work with APK data"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
