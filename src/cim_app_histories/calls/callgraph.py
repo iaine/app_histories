@@ -1,12 +1,12 @@
 # c/o https://github.com/androguard/androguard/issues/464
 # todo put into GEXF or similar. 
 # Also look at graph merging
-from androguard.misc import AnalyzeAPK
+from androguard. import AnalyzeAPK
 from androguard.core.analysis.analysis import ExternalMethod
 import matplotlib.pyplot as plt
 import networkx as nx
 
-def callgraph(apk_name)
+def callgraph(apk_name):
     a, d, dx = AnalyzeAPK(apk_name)
 
     CFG = nx.DiGraph()
