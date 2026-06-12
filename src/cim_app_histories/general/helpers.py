@@ -17,17 +17,17 @@ class Helper():
         of permissions, activities, or intents to be present
         :param dict_of_lists - dictionary of lists
         '''
-        current = []
+        previous = None
         changes = {}
-        for test in dict_of_lists.keys():
-            if current == []: 
-                changes[test] = {"added": ";".join(dict_of_lists[test]), "remove":""}
+        for label, items in dict_of_lists.items():
+            current = set(items)
+            if previous is None:
+                changes[label] = {"added": sorted(current), "removed": []}
             else:
-                s1 = set(current)
-                s2 = set(test)
-                added = list(s2.intersection(s1))
-                removed = list(s1.intersection(s2))
-                changes[test] = {"added": ";".join(added), "remove":";".join(removed)}
-            current = dict_of_lists[test]
+                changes[label] = {
+                    "added": sorted(current - previous),
+                     "removed": sorted(previous - current),
+                }
+            previous = current
         return changes
             
