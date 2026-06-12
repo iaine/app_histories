@@ -1,6 +1,6 @@
 ## Downloader
 
-The downloader tool enables a user to download from AndroZoo. 
+The downloader tool enables a user to download from AndroZoo. It is now in its own repository, [Androozoo Downloader](https://github.com/iaine/androozoo_downloader). 
 
 It requires a an azkey.ini file. This has the following fields:
 key= "Your API key"

@@ -1,0 +1,57 @@
+Bootstrap: docker
+From: python:3.12-slim
+
+# Apptainer (formerly Singularity) image for the CIM App Histories toolkit.
+#
+# Build (needs root or --fakeroot, typically on a laptop/build host):
+#     apptainer build cim-apps.sif apptainer.def
+#
+# Run anywhere -- the same .sif works on a laptop and on the cluster:
+#     apptainer run cim-apps.sif classify --apk app.apk --outdir results/
+#
+# SLURM array over a corpus (one shard per array task):
+#     #SBATCH --array=0-99
+#     #SBATCH --cpus-per-task=4
+#     apptainer run --bind /scratch:/scratch cim-apps.sif classify \
+#         --apk-list /scratch/corpus.txt --outdir /scratch/results \
+#         --task-index "$SLURM_ARRAY_TASK_ID" --task-count 100
+#
+# Pin the source to a tag/commit at build time for reproducibility:
+#     apptainer build --build-arg REF=v0.0.2 cim-apps.sif apptainer.def
+
+%arguments
+    REF=main
+
+%post
+    set -eu
+    apt-get update && apt-get install -y --no-install-recommends git \
+        && rm -rf /var/lib/apt/lists/*
+    pip install --no-cache-dir --upgrade pip
+    # Install the toolkit at a fixed ref. Swap for `pip install /opt/src`
+    # with a %files section if building from a local checkout.
+    pip install --no-cache-dir \
+        "git+https://github.com/iaine/app_histories.git@{{ REF }}"
+    apt-get purge -y git && apt-get autoremove -y
+
+%environment
+    # Never attempt an interactive matplotlib backend on a headless node.
+    export MPLBACKEND=Agg
+    # Containers should not write bytecode caches into bind mounts.
+    export PYTHONDONTWRITEBYTECODE=1
+
+%runscript
+    exec cim-apps "$@"
+
+%test
+    cim-apps --version
+    python -c "import cim_app_histories.ab.ab, cim_app_histories.localisation.localisation"
+
+%labels
+    Maintainer iain.emsley@warwick.ac.uk
+    Project https://github.com/iaine/app_histories
+
+%help
+    CIM App Histories toolkit. Entry point: cim-apps
+    Subcommands: classify, ab, localisation (see `cim-apps --help`).
+    Outputs JSON-Lines, one file per input, skip-if-exists for restartable
+    array jobs.
