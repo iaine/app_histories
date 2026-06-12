@@ -126,7 +126,7 @@ class analyseDEX():
 
         common = []
         for tr in self.AB_CLASSES:
-            if any(tr in x for x in dex.get_classes()):
+            if any(tr in x for x in dex.get_classes() if x == tr or x.startswith(tr + ".")):
                 common.append(tr)
 
         return common
