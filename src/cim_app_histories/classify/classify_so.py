@@ -1094,8 +1094,100 @@ class ClassifySO():
     def is_tflite(self, data):
         return b"TFL3" in data[:16]
 
-    def is_protobuf(self, data):
-        return b"\x08" in data[:2]  # simplistic, improve if needed
+    @staticmethod
+    def _read_varint(data, pos):
+        """Read a protobuf varint at ``pos``.
+
+        Returns (value, new_pos), or (None, new_pos) if the bytes do not
+        form a valid varint (runs past the end, or exceeds 10 bytes).
+        """
+        result = 0
+        shift = 0
+        start = pos
+        while pos < len(data):
+            if pos - start >= 10:          # varints are at most 10 bytes
+                return None, pos
+            b = data[pos]
+            result |= (b & 0x7F) << shift
+            pos += 1
+            if not (b & 0x80):
+                return result, pos
+            shift += 7
+        return None, pos                   # ran off the end mid-varint
+
+    def is_protobuf(self, data, max_fields=16, min_fields=3):
+        """Heuristic check that ``data`` is a protobuf-serialised message.
+
+        Protobuf has no magic number, so the previous check
+        (``b"\\x08" in data[:2]``) matched any file whose first two bytes
+        happened to contain 0x08 -- roughly 1 in 128 of all binaries --
+        and massively over-counted "protobuf models".
+
+        This version walks the wire format instead: it parses successive
+        (tag, value) fields and requires that
+
+        * every field number is plausible (1..99999),
+        * every wire type is valid (0 varint, 1 fixed64, 2
+          length-delimited, 5 fixed32 -- the deprecated group types 3/4
+          and undefined 6/7 are rejected),
+        * every length-delimited payload fits inside the buffer, and
+        * the walk either consumes the buffer exactly or survives
+          ``max_fields`` consecutive fields, having seen at least
+          ``min_fields`` fields including one length-delimited field
+          (real model files -- TF GraphDef, ONNX -- always contain
+          length-delimited submessages).
+
+        Random or non-protobuf data almost always fails the bounds check
+        on a length-delimited field within the first few fields.
+        """
+        if not data or len(data) < 8:
+            return False
+
+        limit = len(data)
+        pos = 0
+        fields = 0
+        seen_length_delimited = False
+
+        while pos < limit and fields < max_fields:
+            tag, pos = self._read_varint(data, pos)
+            if tag is None:
+                return False
+
+            wire_type = tag & 0x07
+            field_no = tag >> 3
+
+            if field_no == 0 or field_no > 99999:
+                return False
+
+            if wire_type == 0:                       # varint
+                value, pos = self._read_varint(data, pos)
+                if value is None:
+                    return False
+            elif wire_type == 1:                     # fixed64
+                pos += 8
+                if pos > limit:
+                    return False
+            elif wire_type == 2:                     # length-delimited
+                length, pos = self._read_varint(data, pos)
+                if length is None or pos + length > limit:
+                    return False
+                pos += length
+                seen_length_delimited = True
+            elif wire_type == 5:                     # fixed32
+                pos += 4
+                if pos > limit:
+                    return False
+            else:                                    # 3/4 deprecated, 6/7 invalid
+                return False
+
+            fields += 1
+
+        if fields < min_fields or not seen_length_delimited:
+            return False
+
+        # Either we parsed the whole buffer cleanly, or we survived
+        # max_fields consecutive well-formed fields.
+        return pos == limit or fields >= max_fields
 
     def is_pytorch(self, data):
         return b"pytorch" in data or b"torch" in data.lower()

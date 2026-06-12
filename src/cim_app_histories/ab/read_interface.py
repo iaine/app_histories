@@ -1,11 +1,11 @@
 '''
 Functions read interface
 '''
-import glob
+import csv
 import os
 
-from src.app_histories.ab.ab import AB
-from localisation import Localisation
+from ..localisation.localisation import Locales
+from .ab import AB
 
 class Read_Interface():
 
@@ -32,13 +32,16 @@ o	Process:
 2.	Look for region-specific text or UI elements, such as currency or date formats.
 
         '''
-        local = Localisation()
+        local = Locales()
         localised = local.get_values(basepath + pkg_name)
 
         #read the package and then write to CSV file
-        with open(os.path.join(extracted, pkg_name[:-4] + ".csv"), "w+") as fh:
+        out_path = os.path.join(extracted, os.path.splitext(pkg_name)[0] + ".csv")
+        with open(out_path, "w", newline="") as fh:
+            writer = csv.writer(fh)
             for p in localised:
-                if p != "": fh.write("{}, {}\n".format(pkg_name, p))
+                if p != "":
+                    writer.writerow([pkg_name, p])
 
     def extract_ab_testing(self, basepath, pkg_name, extracted):
         """
@@ -48,7 +51,10 @@ o	Process:
         pkgs = ab.get_classes(basepath + pkg_name)
         pkg = ab.find_ab_by_package(basepath, pkgs)
         
-        #read the pacakge and then write to CSV file
-        with open(os.path.join(extracted, pkg_name[:-4] + ".csv"), "w+") as fh:
+        #read the package and then write to CSV file
+        out_path = os.path.join(extracted, os.path.splitext(pkg_name)[0] + ".csv")
+        with open(out_path, "w", newline="") as fh:
+            writer = csv.writer(fh)
             for p in pkg:
-                if p != "": fh.write("{}, {}\n".format(pkg_name, p))
+                if p != "":
+                    writer.writerow([pkg_name, p])
