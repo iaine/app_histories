@@ -4,11 +4,13 @@ Methods to work on the DEX code.
 Starts with extracting dex code from apk then moves onto 
 methods to work with the dex code.
 """
+import networkx as nx
 import os
 import re
 import sys
 
 from androguard.core.dex import DEX
+from androguard.core.analysis import ExternalMethod
 
 class analyseDEX():
 
@@ -130,3 +132,47 @@ class analyseDEX():
                 common.append(tr)
 
         return common
+    
+    #---------Callgraph ---------------
+
+    def callgraph(self, dx, class_to_call):
+        """
+            Find the associated methods with the graph. 
+        """
+
+        CFG = nx.DiGraph()
+
+        for m in dx.find_methods(classname=class_to_call):
+            orig_method = m.get_method()
+ 
+            is_this_external = False
+            if isinstance(orig_method, ExternalMethod):
+                is_this_external = True
+                
+            CFG.add_node(orig_method, external=is_this_external)
+
+            for other_class, callee, offset in m.get_xref_to():
+                is_external = False
+                if isinstance(callee, ExternalMethod):
+                    is_external = True
+
+
+                if callee not in CFG.nodes:
+                    CFG.add_node(callee, external=is_external)
+
+                # As this is a DiGraph and we are not interested in duplicate edges,
+                # check if the edge is already in the edge set.
+                # If you need all calls, you probably want to check out MultiDiGraph
+                if not CFG.has_edge(orig_method, callee):
+                    CFG.add_edge(orig_method, callee)
+
+        internal = []
+        external = []
+
+        for n in CFG.node:
+            if isinstance(n, ExternalMethod):
+                external.append(n)
+            else:
+                internal.append(n)
+
+        return CFG
