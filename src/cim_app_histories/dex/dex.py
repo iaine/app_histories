@@ -9,21 +9,24 @@ import os
 import re
 import sys
 
+from loguru import logger as log
+
+log.add(level="CRITICAL")
+
 from androguard.core.dex import DEX
 from androguard.core.analysis import ExternalMethod
 
+from ..general.exception import CastException
+
 class analyseDEX():
 
-    def __init__(self):
-        pass
+    def __init__(self, apk):
+        try:
+            self.dex = DEX(apk)
+        except CastException as ce:
+            log.critical("DEX cannot be created")
 
-    def extract(self, apk):
-        '''
-        Function to extract DEX code
-        '''
-        return DEX(apk)
-
-    def find_methods(self, dexcode, classname):
+    def find_methods(self):
         '''
         Get strings from DEX code
 
@@ -35,7 +38,7 @@ class analyseDEX():
         '''
         strs = []
         try:
-            for string in dexcode.get_methods():
+            for string in self.dex.get_methods():
                 strs.extend(re.findall(r'https?://\S+', string))
                 
         except Exception:
@@ -45,7 +48,7 @@ class analyseDEX():
 
         return strs
 
-    def http_strings(self, dexcode):
+    def http_strings(self):
         '''
         Get strings from DEX code
 
@@ -57,7 +60,7 @@ class analyseDEX():
         '''
         strs = []
         try:
-            for string in dexcode.get_strings():
+            for string in self.dex.get_strings():
                 strs.extend(re.findall(r'https?://\S+', string))
         except Exception:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -66,20 +69,20 @@ class analyseDEX():
 
         return strs
 
-    def methods(self, dex):
-        return [method.get_name() for method in dex.get_methods()]
+    def methods(self):
+        return [method.get_name() for method in self.dex.get_methods()]
 
-    def get_classes(self, dex, string_find):
+    def get_classes(self, string_find):
         '''
         Function to find string in class name
         '''
         classes = []
-        for cls in dex.get_classes():
+        for cls in self.dex.get_classes():
             if string_find in cls.name:
                 classes.extend([cls.name])
         return classes
 
-    def dynamic_detection(self, dex):
+    def dynamic_detection(self):
         '''
            Finding dynamic loading classes. 
            Loading apps?
@@ -91,7 +94,7 @@ class analyseDEX():
 
         dynamic = []
 
-        for method in dex.get_methods():
+        for method in self.dex.get_methods():
             for dyn_method in dynamic_methods:
                 if dyn_method in str(method.get_code()):
                     dynamic.extend(method.name)
@@ -116,7 +119,7 @@ class analyseDEX():
                   'com.umeng.commonsdk', 'com.umeng.analytics.game', 'com.uxcam.UXCam',
                   'com.uxcam.datamodel.UXConfig', 'com.vwo.mobile']
 
-    def find_ab_by_package(self, dex):
+    def find_ab_by_package(self):
         '''
             Files to Inspect: Look for experimentation frameworks, often indicated by the use of libraries like Firebase A/B Testing or flag-based components in the code.
         
@@ -128,21 +131,21 @@ class analyseDEX():
 
         common = []
         for tr in self.AB_CLASSES:
-            if any(tr in x for x in dex.get_classes() if x == tr or x.startswith(tr + ".")):
+            if any(tr in x for x in self.dex.get_classes() if x == tr or x.startswith(tr + ".")):
                 common.append(tr)
 
         return common
     
     #---------Callgraph ---------------
 
-    def callgraph(self, dx, class_to_call):
+    def callgraph(self, class_to_call):
         """
             Find the associated methods with the graph. 
         """
 
         CFG = nx.DiGraph()
 
-        for m in dx.find_methods(classname=class_to_call):
+        for m in self.dex.find_methods(classname=class_to_call):
             orig_method = m.get_method()
  
             is_this_external = False
@@ -160,9 +163,6 @@ class analyseDEX():
                 if callee not in CFG.nodes:
                     CFG.add_node(callee, external=is_external)
 
-                # As this is a DiGraph and we are not interested in duplicate edges,
-                # check if the edge is already in the edge set.
-                # If you need all calls, you probably want to check out MultiDiGraph
                 if not CFG.has_edge(orig_method, callee):
                     CFG.add_edge(orig_method, callee)
 
