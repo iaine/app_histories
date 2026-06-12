@@ -3,8 +3,6 @@ Methods for tracking AB testing
 
 AB_CLASSES is further described on the App Histories site
 """
-import os
-import re
 
 class AB():
 
