@@ -9,8 +9,8 @@ from androguard.core.analysis.analysis import Analysis
 from androguard.core.dex import DEX
 from androguard.core.apk import APK
 
-from src.app_histories.classify.safe_class import SafeMethod
-from src.app_histories.classify.classify_url import ClassifyURL
+from .safe_class import SafeMethod
+from .classify_url import ClassifyURL
 
 class ClassifySO():
 
@@ -284,8 +284,17 @@ class ClassifySO():
         return None
         
     def detect_vendor_from_strings(self, strings):
+        """Detect a vendor from extracted strings.
 
-        text = " ".join(strings).lower()
+        Accepts a list of strings (preferred) or a single pre-joined
+        string. Joining is only performed on lists: ``" ".join`` on a
+        *string* would interleave every character with spaces and make
+        every keyword check silently fail.
+        """
+        if isinstance(strings, str):
+            text = strings.lower()
+        else:
+            text = " ".join(strings).lower()
 
         if any(k in text for k in [
             "bytedance", "ttnet", "toutiao"
@@ -336,9 +345,7 @@ class ClassifySO():
             return v
             
         if global_strings:
-            text = " ".join(global_strings).lower()
-
-            v = self.detect_vendor_from_strings(text)
+            v = self.detect_vendor_from_strings(global_strings)
             if v:
                 return v
 
