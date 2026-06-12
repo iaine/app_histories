@@ -11,10 +11,10 @@ import sys
 
 from loguru import logger as log
 
-log.add(level="CRITICAL")
+##log.add(level="CRITICAL")
 
 from androguard.core.dex import DEX
-from androguard.core.analysis import ExternalMethod
+from androguard.core.analysis.analysis import ExternalMethod
 
 from ..general.exception import CastException
 
