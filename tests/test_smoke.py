@@ -101,14 +101,14 @@ def _import_or_skip(module_name):
     except Exception as e:
         pytest.fail(f"cannot import {module_name}: {type(e).__name__}: {e}")
 
-
-#def test_ab_class_constructs():
-#    """
-#    Test AB's move into dex(). 
-#    """
-#    mod = _import_or_skip(f"{PACKAGE}.dex.dex")
-#    ab = mod.DEX()
-#    assert isinstance(ab.AB_CLASSES, list) and len(ab.AB_CLASSES) > 0
+@pytest.mark.skip(reason="waiting for mock to appear")
+def test_ab_class_constructs():
+    """
+    Test AB's move into dex(). 
+    """
+    mod = _import_or_skip(f"{PACKAGE}.dex.dex")
+    ab = mod.DEX()
+    assert isinstance(ab.AB_CLASSES, list) and len(ab.AB_CLASSES) > 0
 
 
 def test_locales_constructs_and_extracts():
