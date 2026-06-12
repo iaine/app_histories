@@ -50,28 +50,6 @@ class Locales():
 
         return (language, country, device)
 
-
-    def get_values(self, basepath):
-        '''
-        Method to get the personalisation folders
-
-        :param basepath
-        :return set of paths in res
-        '''
-
-        # search for value-en or mipmap-b+es to find everything from the - to a boundary. 
-        iso_lang = re.compile(r"-(?:b\\+)?(" + "|".join(self.LANGUAGE_CODES) +")\\b", flags=re.I)
-
-        pkgs = set()
-        #set to explicitly look in /res for localisation. 
-        bpath = basepath + "/res/"
-        for root, dirs, files in os.walk(bpath):
-            path = root.split(os.sep)
-
-            if iso_lang.search(root): 
-                pkgs.add("/".join(path).replace(basepath.replace('/', '.'), ""))
-        return pkgs
-
     def extract_language (self, values):
         """
             Extract the language from the values
@@ -108,8 +86,5 @@ class Locales():
         for d in device_vals:
             if d in values:
                 device.append(d)
-        
-        if len(device) > 1:
-            return "".join(device)
 
-        return device
+        return "".join(device)
