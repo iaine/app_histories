@@ -104,53 +104,87 @@ class extractAPK():
                      'uz', 've', 'vi', 'vo', 'wa', 'wo', 'xh', 'yi', 'yo',
                      'za', 'zh', 'zu']
     
+    # NB raw string with single escapes: r"\+" is a literal plus and
+    # r"\b" a word boundary; the previous double backslashes made both
+    # literal backslashes, so b+ qualifiers were never matched.
+    ISO_LANG_RE = re.compile(
+        r"-(?:b\+)?(" + "|".join(LANGUAGE_CODES) + r")(?:\b|\+)", re.I)
+
+    NON_REGION_QUALIFIERS = re.compile(
+        r"^(?:[a-z]+dpi|sw\d+dp|w\d+dp|h\d+dp|v\d+|land|port|night|notnight|"
+        r"small|normal|large|xlarge|long|notlong|ldltr|ldrtl|round|notround|"
+        r"car|desk|television|watch|appliance|vrheadset)$", re.I)
+
     def get_files(self):
         '''
-        Function to read the source files, find XMl files. 
-        We'll use this to read the filenames. 
+        Locale qualifiers found in resource paths, deduplicated.
+
+        Parses the resource DIRECTORY segment (values-zh-rCN), not the
+        full path: splitting the whole path on "-" returned fragments
+        like "es/strings.xml" as a language.
         '''
-        iso_lang = re.compile(r"-(?:b\\+)?(" + "|".join(self.LANGUAGE_CODES) +")\\b", flags=re.I)
-        #test run with both regex.
-        content = [self.get_locale_values(file_name) for file_name in self.apk.get_files()\
-                    if "/res/" in file_name and iso_lang.search(file_name)]
-        return content
+        seen = set()
+        for file_name in self.apk.get_files():
+            if not (file_name.startswith("res/") or "/res/" in file_name):
+                continue
+            parts = file_name.split("/")
+            if len(parts) < 2:
+                continue
+            segment = parts[-2]
+            if self.ISO_LANG_RE.search("-" + segment.split("-", 1)[-1]
+                                       if "-" in segment else segment):
+                values = self.get_locale_values(segment)
+                if values[0]:
+                    seen.add(values)
+        return sorted(seen)
 
-    def get_locale_values (self, filename):
+    def get_locale_values (self, segment):
         """
-        Get the local values from the APK
+        Parse one resource directory segment, e.g. "values-zh-rCN".
         """
-
-        language = self.extract_language(filename)
-        country = self.extract_country(filename)
-        device = self.extract_device(filename)
+        language = self.extract_language(segment)
+        country = self.extract_country(segment)
+        device = self.extract_device(segment)
 
         return (language, country, device)
 
     def extract_language (self, values):
         """
-            Extract the language from the values
+        Extract the language: "values-es" -> "es",
+        "values-b+es+419" -> "es", "values-zh-rCN" -> "zh".
         """
-        if len(values.split('-')) > 1:
-            return values.split('-')[1]
+        parts = values.split('-')
+        if len(parts) < 2:
+            return ""
 
-        return ""
+        token = parts[1].strip()
+        if token.startswith("b+"):
+            return token.split("+")[1] if "+" in token else ""
+        return token if token.lower() in self.LANGUAGE_CODES else ""
 
     def extract_country (self, values):
         """
-            Extract the language from the values
+        Extract the region: "values-zh-rCN" -> "CN",
+        "values-b+es+419" -> "419". Device qualifiers (sw600dp, v26,
+        night, ...) and script subtags (Latn) are not regions.
         """
-        c = values.split('-')
+        parts = values.split('-')
 
-        if len(c) < 3: 
-            country = ""
-        else:
-            if c[2] in ["xlarge", 'mdpi']: country = ""
-            else:
-                country = c[2].strip()
+        if len(parts) > 1 and parts[1].startswith("b+"):
+            sub = parts[1].split("+")
+            if len(sub) >= 3 and (sub[2].isdigit() or sub[2].isupper()):
+                return sub[2]
+            return ""
 
-                if country.startswith("r"): 
-                    country = country.replace("r","")
-        return country
+        if len(parts) < 3:
+            return ""
+
+        token = parts[2].strip()
+        if self.NON_REGION_QUALIFIERS.match(token):
+            return ""
+        if re.fullmatch(r"r[A-Z]{2}", token) or re.fullmatch(r"r\d{3}", token):
+            return token[1:]
+        return ""
 
     def extract_device(self, values):
         '''

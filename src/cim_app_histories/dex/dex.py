@@ -119,22 +119,28 @@ class analyseDEX():
                   'com.umeng.commonsdk', 'com.umeng.analytics.game', 'com.uxcam.UXCam',
                   'com.uxcam.datamodel.UXConfig', 'com.vwo.mobile']
 
+    def class_names(self):
+        '''
+        Class names in dotted form (com.abtasty.Foo). DEX stores them as
+        type descriptors (Lcom/abtasty/Foo;), so comparing dotted
+        signatures against raw names can never match.
+        '''
+        return [str(c.get_name())[1:-1].replace("/", ".")
+                for c in self.dex.get_classes()]
+
     def find_ab_by_package(self):
         '''
-            Files to Inspect: Look for experimentation frameworks, often indicated by the use of libraries like Firebase A/B Testing or flag-based components in the code.
-        
-            Also look at the tracker listing from Python. 
+        A/B-testing SDK signatures present in this dex.
 
-            :param classes - DEX object. 
-            :return list of common packages from AB testing
+        Anchored prefix matching: a signature matches a class equal to it
+        or in a subpackage of it -- substring matching over-counted
+        (io.split matched studio.splitties).
+
+        :return: list of matched signatures from AB_CLASSES
         '''
-
-        common = []
-        for tr in self.AB_CLASSES:
-            if any(tr in x for x in self.dex.get_classes() if x == tr or x.startswith(tr + ".")):
-                common.append(tr)
-
-        return common
+        names = self.class_names()
+        return [tr for tr in self.AB_CLASSES
+                if any(x == tr or x.startswith(tr + ".") for x in names)]
     
     #---------Callgraph ---------------
 
