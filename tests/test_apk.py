@@ -45,3 +45,23 @@ def test_apk_software_version_dash():
     mod = _import_or_skip(f"{PACKAGE}.apk.apk")
     ap = mod.APK("filenm")
     assert ap.get_software_version("7.12.34_56") == 7.123456
+
+def test_extract_language():
+    mod = _import_or_skip(f"{PACKAGE}.apk.apk")
+    loc = mod.APK("filenm")
+    assert loc.extract_language("values-es") == "es"
+
+def test_extract_country():
+    mod = _import_or_skip(f"{PACKAGE}.apk.apk")
+    loc = mod.APK("filenm")
+    assert loc.extract_country("values-zh-rCN") == "CN"
+
+def test_extract_device():
+    mod = _import_or_skip(f"{PACKAGE}.apk.apk")
+    loc = mod.APK("filenm")
+    assert loc.extract_device("values-zh-rCN-hdpi") == "hdpi"
+
+def test_extract_device_long():
+    mod = _import_or_skip(f"{PACKAGE}.apk.apk")
+    loc = mod.APK("filenm")
+    assert loc.extract_device("values-zh-rCN-hdpi-night") == "hdpinight"

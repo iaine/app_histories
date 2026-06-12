@@ -1,5 +1,5 @@
 """
-Unit testing localisation methods
+Unit testing dex methods
 """
 import importlib
 import sys
@@ -28,22 +28,8 @@ def _import_or_skip(module_name):
     except Exception as e:
         pytest.fail(f"cannot import {module_name}: {type(e).__name__}: {e}")
 
-def test_extract_language():
-    mod = _import_or_skip(f"{PACKAGE}.localisation.localisation")
-    loc = mod.Locales()
-    assert loc.extract_language("values-es") == "es"
-
-def test_extract_country():
-    mod = _import_or_skip(f"{PACKAGE}.localisation.localisation")
-    loc = mod.Locales()
-    assert loc.extract_country("values-zh-rCN") == "CN"
-
-def test_extract_device():
-    mod = _import_or_skip(f"{PACKAGE}.localisation.localisation")
-    loc = mod.Locales()
-    assert loc.extract_device("values-zh-rCN-hdpi") == "hdpi"
-
-def test_extract_device_long():
-    mod = _import_or_skip(f"{PACKAGE}.localisation.localisation")
-    loc = mod.Locales()
-    assert loc.extract_device("values-zh-rCN-hdpi-night") == "hdpinight"
+@pytest.mark.skip(reason="waiting for mock to appear")
+def test_apk_software_version_semantic():
+    mod = _import_or_skip(f"{PACKAGE}.dex.dex")
+    ap = mod.extractDEX("filenm")
+    assert len(ap.get_methods() ) > 0
