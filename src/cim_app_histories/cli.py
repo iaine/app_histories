@@ -13,10 +13,13 @@ Designed so the *same command* runs on a laptop and on an HPC cluster:
 
 Laptop:
     cim-apps classify --apk app.apk --outdir results/
-    cim-apps ab --decompiled extracted/app/ --outdir results/
+    cim-apps metadata --apk app.apk --outdir results/
 
-HPC (SLURM array over a corpus list, one shard per array task):
-    cim-apps classify --apk-list corpus.txt --outdir results/ \\
+Directory of apps (the common case: a scraped corpus folder):
+    cim-apps metadata --apk-dir apps/ --outdir results/
+
+HPC (SLURM array over a corpus, one shard per array task):
+    cim-apps classify --apk-dir /scratch/apps --outdir results/ \\
         --task-index "$SLURM_ARRAY_TASK_ID" --task-count "$SLURM_ARRAY_TASK_COUNT"
 """
 
@@ -50,12 +53,46 @@ def shard(items, task_index, task_count):
     return [x for i, x in enumerate(items) if i % task_count == task_index]
 
 
-def collect_inputs(single, list_file):
+def collect_inputs(single, list_file, directory=None, recursive=False):
     if single:
         return [Path(single)]
-    paths = [Path(line.strip()) for line in Path(list_file).read_text().splitlines()
-             if line.strip() and not line.startswith("#")]
-    return paths
+    if list_file:
+        return [Path(line.strip())
+                for line in Path(list_file).read_text().splitlines()
+                if line.strip() and not line.startswith("#")]
+
+    base = Path(directory)
+    if not base.is_dir():
+        raise SystemExit(f"--apk-dir is not a directory: {base}")
+    walk = base.rglob("*") if recursive else base.iterdir()
+    # sorted() is load-bearing: every SLURM array task scans the
+    # directory independently, so all tasks must derive the IDENTICAL
+    # ordered list for round-robin sharding to partition cleanly.
+    return sorted(
+        p for p in walk
+        if p.is_file() and p.suffix.lower() == ".apk"
+        and not p.name.startswith(".")
+    )
+
+
+def make_output_names(inputs, kind):
+    """Output filename per input. Stem-based for readability; stems that
+    appear more than once (two app.apk in different subdirectories) get
+    a short path-hash suffix so outputs cannot collide. Computed over
+    the FULL input list before sharding, so names are deterministic
+    across independent array tasks."""
+    import hashlib
+    from collections import Counter
+
+    stems = Counter(p.stem for p in inputs)
+    names = {}
+    for p in inputs:
+        if stems[p.stem] > 1:
+            h = hashlib.sha1(str(p.resolve()).encode()).hexdigest()[:8]
+            names[p] = f"{p.stem}.{h}.{kind}.jsonl"
+        else:
+            names[p] = f"{p.stem}.{kind}.jsonl"
+    return names
 
 
 def output_path(outdir, input_path, kind):
@@ -149,9 +186,21 @@ def task_flows(apk_path, options=None):
     return [rec]
 
 
+def task_metadata(apk_path, options=None):
+    """App metadata for one APK: identity, versions, permissions,
+    activities, intents, localisation coverage, and A/B-testing SDKs
+    (AB and localisation are part of this record; they are no longer
+    separate commands)."""
+    from .calls.metadata import extract_metadata
+
+    return [dict(base_record(apk_path, "metadata"),
+                 **extract_metadata(str(apk_path)))]
+
+
 TASKS = {
     "classify": task_classify,
     "flows": task_flows,
+    "metadata": task_metadata,
 }
 
 
@@ -159,9 +208,10 @@ TASKS = {
 # driver
 # ----------------------------------------------------------------------
 
-def run_one(kind, input_path, outdir, force, options=None):
+def run_one(kind, input_path, outdir, force, options=None, out_name=None):
     """Process one input; never raises -- errors become records."""
-    out = output_path(outdir, input_path, kind)
+    out = (Path(outdir) / out_name) if out_name else \
+        output_path(outdir, input_path, kind)
     if out.exists() and not force:
         return ("skipped", input_path, out)
     try:
@@ -175,16 +225,20 @@ def run_one(kind, input_path, outdir, force, options=None):
         return ("error", input_path, out)
 
 
-def run_batch(kind, inputs, outdir, workers, force, options=None):
+def run_batch(kind, inputs, outdir, workers, force, options=None,
+              out_names=None):
+    out_names = out_names or {}
     statuses = {"ok": 0, "skipped": 0, "error": 0}
     if workers <= 1 or len(inputs) <= 1:
-        results = (run_one(kind, p, outdir, force, options) for p in inputs)
+        results = (run_one(kind, p, outdir, force, options, out_names.get(p))
+                   for p in inputs)
         for status, path, _ in results:
             statuses[status] += 1
             print(f"[{status}] {path}", file=sys.stderr)
     else:
         with ProcessPoolExecutor(max_workers=workers) as pool:
-            futures = [pool.submit(run_one, kind, p, outdir, force, options) for p in inputs]
+            futures = [pool.submit(run_one, kind, p, outdir, force, options,
+                                   out_names.get(p)) for p in inputs]
             for fut in as_completed(futures):
                 status, path, _ = fut.result()
                 statuses[status] += 1
@@ -198,6 +252,14 @@ def add_common(sub, input_flag, input_help):
     grp.add_argument(input_flag, help=input_help)
     grp.add_argument(input_flag + "-list",
                      help="text file with one input path per line")
+    grp.add_argument(input_flag + "-dir",
+                     help="directory of .apk files (scanned in sorted "
+                          "order; for very large or changing corpora, "
+                          "generate a manifest once and use "
+                          + input_flag + "-list for stability)")
+    sub.add_argument("--recursive", action="store_true",
+                     help="with " + input_flag + "-dir, also scan "
+                          "subdirectories")
     sub.add_argument("--outdir", required=True, help="output directory")
     sub.add_argument("--workers", type=int, default=default_workers(),
                      help="parallel workers (default: CPUs allocated to this job)")
@@ -220,11 +282,10 @@ def main(argv=None):
     s = subs.add_parser("classify", help="detect ML runtimes/models in APKs")
     add_common(s, "--apk", "path to one .apk file")
 
-    s = subs.add_parser("ab", help="detect A/B-testing SDKs in decompiled apps")
-    add_common(s, "--decompiled", "path to one JADX output directory")
-
-    s = subs.add_parser("localisation", help="extract locale qualifiers")
-    add_common(s, "--decompiled", "path to one JADX output directory")
+    s = subs.add_parser("metadata",
+                        help="app identity, versions, permissions, "
+                             "locales, and A/B SDKs per APK")
+    add_common(s, "--apk", "path to one .apk file")
 
     s = subs.add_parser("flows",
                         help="trace inputs -> AI modules -> onward processes")
@@ -238,9 +299,10 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
 
-    single = getattr(args, "apk", None) or getattr(args, "decompiled", None)
-    listing = getattr(args, "apk_list", None) or getattr(args, "decompiled_list", None)
-    inputs = shard(collect_inputs(single, listing), args.task_index, args.task_count)
+    all_inputs = collect_inputs(args.apk, args.apk_list, args.apk_dir,
+                                getattr(args, "recursive", False))
+    out_names = make_output_names(all_inputs, args.command)
+    inputs = shard(all_inputs, args.task_index, args.task_count)
 
     if not inputs:
         print("no inputs in this shard; nothing to do", file=sys.stderr)
@@ -249,7 +311,7 @@ def main(argv=None):
     options = {"trace": getattr(args, "trace", False),
                "profile": getattr(args, "profile", False)}
     return run_batch(args.command, inputs, args.outdir, args.workers,
-                     args.force, options)
+                     args.force, options, out_names)
 
 
 if __name__ == "__main__":
