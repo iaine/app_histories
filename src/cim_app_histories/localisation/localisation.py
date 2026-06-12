@@ -1,21 +1,39 @@
 import os
 import re
 
-#import pandas as pd
-
 class Locales():
 
-    def __init__(self):
+    LANGUAGE_CODES= ['aa', 'ab', 'ae', 'af', 'ak', 'am', 'an', 'ar', 'as',
+                     'av', 'ay', 'az', 'ba', 'be', 'bg', 'bi', 'bm', 'bn',
+                     'bo', 'br', 'bs', 'ca', 'ce', 'ch', 'co', 'cr', 'cs',
+                     'cu', 'cv', 'cy', 'da', 'de', 'dv', 'dz', 'ee', 'el',
+                     'en', 'eo', 'es', 'et', 'eu', 'fa', 'ff', 'fi', 'fj',
+                     'fo', 'fr', 'fy', 'ga', 'gd', 'gl', 'gn', 'gu', 'gv',
+                     'ha', 'he', 'hi', 'ho', 'hr', 'ht', 'hu', 'hy', 'hz',
+                     'ia', 'id', 'ie', 'ig', 'ii', 'ik', 'io', 'is', 'it',
+                     'iu', 'ja', 'jv', 'ka', 'kg', 'ki', 'kj', 'kk', 'kl',
+                     'km', 'kn', 'ko', 'kr', 'ks', 'ku', 'kv', 'kw', 'ky',
+                     'la', 'lb', 'lg', 'li', 'ln', 'lo', 'lt', 'lu', 'lv',
+                     'mg', 'mh', 'mi', 'mk', 'ml', 'mn', 'mr', 'ms', 'mt',
+                     'my', 'na', 'nb', 'nd', 'ne', 'ng', 'nl', 'nn', 'no', 
+                     'nr', 'nv', 'ny', 'oc', 'oj', 'om', 'or', 'os', 'pa',
+                     'pi', 'pl', 'ps', 'pt', 'qu', 'rm', 'rn', 'ro', 'ru',
+                     'rw', 'sa', 'sc', 'sd', 'se', 'sg', 'si', 'sk', 'sl',
+                     'sm', 'sn', 'so', 'sq', 'sr', 'ss', 'st', 'su', 'sv',
+                     'sw', 'ta', 'te', 'tg', 'th', 'ti', 'tk', 'tl', 'tn',
+                     'to', 'tr', 'ts', 'tt', 'tw', 'ty', 'ug', 'uk', 'ur',
+                     'uz', 've', 'vi', 'vo', 'wa', 'wo', 'xh', 'yi', 'yo',
+                     'za', 'zh', 'zu']
 
-        with open('./localisation/language.txt', 'r') as f:
-            self.langs = [ d.split(',')[0]for d in f.readlines() ]
+    def __init__(self):
+        pass
 
     def get_files(self, apk):
         '''
         Function to read the source files, find XMl files. 
         We'll use this to read the filenames. 
         '''
-        iso_lang = re.compile(r"-(?:b\\+)?(" + "|".join(self.langs) +")\\b", flags=re.I)
+        iso_lang = re.compile(r"-(?:b\\+)?(" + "|".join(self.LANGUAGE_CODES) +")\\b", flags=re.I)
         #test run with both regex.
         content = [self.get_locale_values(file_name) for file_name in apk.get_files()\
                     if "/res/" in file_name and iso_lang.search(file_name)]
@@ -42,7 +60,7 @@ class Locales():
         '''
 
         # search for value-en or mipmap-b+es to find everything from the - to a boundary. 
-        iso_lang = re.compile(r"-(?:b\\+)?(" + "|".join(self.langs) +")\\b", flags=re.I)
+        iso_lang = re.compile(r"-(?:b\\+)?(" + "|".join(self.LANGUAGE_CODES) +")\\b", flags=re.I)
 
         pkgs = set()
         #set to explicitly look in /res for localisation. 
