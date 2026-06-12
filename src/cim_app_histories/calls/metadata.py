@@ -1,46 +1,44 @@
-from multiprocessing import Pool
-import os
-import pandas as pd
+"""
+Metadata workflow: one compact record per APK.
 
-from loguru import logger
-logger.remove()  # removes all loguru handlers
-logger.add(lambda msg: None, level="CRITICAL")
+Collects app identity (name, package, versions), manifest surface
+(permissions, activities, intents), localisation coverage, and
+A/B-testing SDK presence -- the per-version observables that the
+app-histories method tracks across releases.
 
-from apk.apk import extractAPK
-from dex.dex import analyseDEX
+Pure data out: no printing, no file writing, no logger mutation, no
+multiprocessing -- parallelism and serialisation belong to the CLI's
+batch driver (one APK per task, JSONL out, SLURM-array friendly).
+"""
 
-import re
+from ..apk.apk import extractAPK
+from ..dex.dex import analyseDEX
 
-def main(apkname):
 
-    results = {}
+def extract_metadata(apkname):
+    """Return the metadata record for one APK.
+
+    :param apkname: path to the .apk file
+    :returns: dict of metadata fields
+    """
     a = extractAPK(apkname)
-    results['applicationname'] = a.applicationname()
-    results['pkg'] = a.packagename()
-    results['version_code'] = a.android_version_code()
-    results['android_name'] = a.android_version_name()
-    results['permissions'] = a.permissions()
-    results['activities'] = a.activities()
-    results['intents'] = a.intents()
-    results['localisation'] = a.get_files()
 
-    ed = analyseDEX(a)
+    results = {
+        "applicationname": a.applicationname(),
+        "pkg": a.packagename(),
+        "version_code": a.android_version_code(),
+        "android_name": a.android_version_name(),
+        "permissions": a.permissions(),
+        "activities": a.activities(),
+        "intents": a.intents(),
+        "localisation": a.get_files(),
+    }
 
-    results['ab'] = ed.find_ab_by_package()
-    l = Locales()
+    # A/B detection must scan every classes*.dex: most large apps are
+    # multidex, and scanning only the first dex undercounts SDKs.
+    ab = set()
+    for buff in a.apk.get_all_dex():
+        ab.update(analyseDEX(buff).find_ab_by_package())
+    results["ab"] = sorted(ab)
 
     return results
-    
-    
-
-if __name__ == "__main__":
-    r = []
-    base = '/Users/iain/Desktop/scraper/apps/apk/'
-    apks = [base + _apk for _apk in os.listdir(base) if _apk.endswith(".apk")]
-
-    with Pool(6) as p:
-        r.extend(p.map(main, apks))
-    p.close()
-    p.join() 
-    texts = pd.DataFrame(r)
-    texts.to_csv("", index=False)
