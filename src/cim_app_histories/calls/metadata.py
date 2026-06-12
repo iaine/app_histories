@@ -6,8 +6,6 @@ from loguru import logger
 logger.remove()  # removes all loguru handlers
 logger.add(lambda msg: None, level="CRITICAL")
 
-
-from localisation.localisation import Locales
 from apk.apk import extractAPK
 from dex.dex import analyseDEX
 
@@ -25,7 +23,7 @@ def main(apkname):
     results['activities'] = a.activities()
     results['intents'] = a.intents()
     results['localisation'] = a.get_files()
-    
+
     ed = analyseDEX(a)
 
     results['ab'] = ed.find_ab_by_package()
