@@ -108,34 +108,6 @@ def task_classify(apk_path, options=None):
     return [dict(base, **f) for f in findings] or [dict(base, finding=None)]
 
 
-def task_ab(decompiled_dir, options=None):
-    """A/B-testing SDK signatures in one JADX-decompiled directory."""
-    from .ab.ab import AB
-
-    ab = AB()
-    classes = ab.get_classes(str(decompiled_dir).rstrip("/") + "/")
-    hits = ab.find_ab_by_package(str(decompiled_dir), classes)
-    base = base_record(decompiled_dir, "ab")
-    return [dict(base, signature=h) for h in hits] or [dict(base, signature=None)]
-
-
-def task_localisation(decompiled_dir, options=None):
-    """Locale resource qualifiers in one JADX-decompiled directory."""
-    from .localisation.localisation import Locales
-
-    loc = Locales()
-    folders = sorted(loc.get_values(str(decompiled_dir)))
-    base = base_record(decompiled_dir, "localisation")
-    out = []
-    for folder in folders:
-        out.append(dict(
-            base,
-            resource_dir=folder,
-            language=loc.extract_language(folder),
-            country=loc.extract_country(folder),
-        ))
-    return out or [dict(base, resource_dir=None)]
-
 
 def task_flows(apk_path, options=None):
     """Trace inputs -> modules (libs/models) -> onward processes for one
@@ -179,8 +151,6 @@ def task_flows(apk_path, options=None):
 
 TASKS = {
     "classify": task_classify,
-    "ab": task_ab,
-    "localisation": task_localisation,
     "flows": task_flows,
 }
 
