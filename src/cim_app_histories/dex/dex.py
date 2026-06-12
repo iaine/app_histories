@@ -6,9 +6,9 @@ methods to work with the dex code.
 """
 import os
 import re
+import sys
 
 from androguard.core.dex import DEX
-from androguard.core.analysis.analysis import Analysis
 
 class analyseDEX():
 
