@@ -97,7 +97,7 @@ def base_record(input_path, kind):
 # task functions (run in worker processes; must be importable, top-level)
 # ----------------------------------------------------------------------
 
-def task_classify(apk_path):
+def task_classify(apk_path, options=None):
     """Detect ML runtimes/model binaries in one APK (androguard backend)."""
     from androguard.core.apk import APK
     from .classify.classify_so import ClassifySO
@@ -108,7 +108,7 @@ def task_classify(apk_path):
     return [dict(base, **f) for f in findings] or [dict(base, finding=None)]
 
 
-def task_ab(decompiled_dir):
+def task_ab(decompiled_dir, options=None):
     """A/B-testing SDK signatures in one JADX-decompiled directory."""
     from .ab.ab import AB
 
@@ -119,7 +119,7 @@ def task_ab(decompiled_dir):
     return [dict(base, signature=h) for h in hits] or [dict(base, signature=None)]
 
 
-def task_localisation(decompiled_dir):
+def task_localisation(decompiled_dir, options=None):
     """Locale resource qualifiers in one JADX-decompiled directory."""
     from .localisation.localisation import Locales
 
@@ -137,10 +137,51 @@ def task_localisation(decompiled_dir):
     return out or [dict(base, resource_dir=None)]
 
 
+def task_flows(apk_path, options=None):
+    """Trace inputs -> modules (libs/models) -> onward processes for one
+    APK and return the flow graph. Pure data out; chains never emitted."""
+    from androguard.core.apk import APK
+    from .calls.multimodal_pipeline import build_flow_graph, to_sankey
+
+    options = options or {}
+
+    profiler = None
+    if options.get("profile"):
+        from .general.perf import StageProfiler
+        profiler = StageProfiler()
+
+    apk = APK(str(apk_path))
+
+    files = [(f, apk.get_file(f)) for f in apk.get_files()
+             if f.endswith(".so") or f.lower().endswith(
+                 (".tflite", ".lite", ".onnx", ".pt", ".ptl", ".pb", ".mnn",
+                  ".param", ".nb", ".ms", ".om", ".bytenn", ".model", ".dat"))]
+    permissions = apk.get_permissions()
+
+    dx = None
+    if options.get("trace"):
+        # Method tracing needs full analysis: substantially slower, so it
+        # is opt-in. Chains are summarised into link evidence, not output.
+        from androguard.misc import AnalyzeAPK
+        _, _, dx = AnalyzeAPK(str(apk_path))
+
+    graph = build_flow_graph(files, permissions=permissions, dx=dx,
+                             profiler=profiler)
+    rec = dict(base_record(apk_path, "flows"),
+               graph=graph,
+               sankey=to_sankey(graph),
+               summary=graph["summary"])
+    if profiler is not None:
+        rec["profile"] = profiler.report()
+        profiler.close()
+    return [rec]
+
+
 TASKS = {
     "classify": task_classify,
     "ab": task_ab,
     "localisation": task_localisation,
+    "flows": task_flows,
 }
 
 
@@ -148,13 +189,13 @@ TASKS = {
 # driver
 # ----------------------------------------------------------------------
 
-def run_one(kind, input_path, outdir, force):
+def run_one(kind, input_path, outdir, force, options=None):
     """Process one input; never raises -- errors become records."""
     out = output_path(outdir, input_path, kind)
     if out.exists() and not force:
         return ("skipped", input_path, out)
     try:
-        records = TASKS[kind](input_path)
+        records = TASKS[kind](input_path, options)
         write_jsonl_atomic(out, records)
         return ("ok", input_path, out)
     except Exception:
@@ -164,16 +205,16 @@ def run_one(kind, input_path, outdir, force):
         return ("error", input_path, out)
 
 
-def run_batch(kind, inputs, outdir, workers, force):
+def run_batch(kind, inputs, outdir, workers, force, options=None):
     statuses = {"ok": 0, "skipped": 0, "error": 0}
     if workers <= 1 or len(inputs) <= 1:
-        results = (run_one(kind, p, outdir, force) for p in inputs)
+        results = (run_one(kind, p, outdir, force, options) for p in inputs)
         for status, path, _ in results:
             statuses[status] += 1
             print(f"[{status}] {path}", file=sys.stderr)
     else:
         with ProcessPoolExecutor(max_workers=workers) as pool:
-            futures = [pool.submit(run_one, kind, p, outdir, force) for p in inputs]
+            futures = [pool.submit(run_one, kind, p, outdir, force, options) for p in inputs]
             for fut in as_completed(futures):
                 status, path, _ = fut.result()
                 statuses[status] += 1
@@ -215,6 +256,16 @@ def main(argv=None):
     s = subs.add_parser("localisation", help="extract locale qualifiers")
     add_common(s, "--decompiled", "path to one JADX output directory")
 
+    s = subs.add_parser("flows",
+                        help="trace inputs -> AI modules -> onward processes")
+    add_common(s, "--apk", "path to one .apk file")
+    s.add_argument("--trace", action="store_true",
+                   help="strengthen links with dex method tracing (slower; "
+                        "chains are summarised, never emitted)")
+    s.add_argument("--profile", action="store_true",
+                   help="record per-stage timing and memory into each "
+                        "output record (adds tracemalloc overhead)")
+
     args = parser.parse_args(argv)
 
     single = getattr(args, "apk", None) or getattr(args, "decompiled", None)
@@ -225,7 +276,10 @@ def main(argv=None):
         print("no inputs in this shard; nothing to do", file=sys.stderr)
         return 0
 
-    return run_batch(args.command, inputs, args.outdir, args.workers, args.force)
+    options = {"trace": getattr(args, "trace", False),
+               "profile": getattr(args, "profile", False)}
+    return run_batch(args.command, inputs, args.outdir, args.workers,
+                     args.force, options)
 
 
 if __name__ == "__main__":
