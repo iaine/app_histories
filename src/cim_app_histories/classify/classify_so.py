@@ -623,30 +623,6 @@ class ClassifySO():
 
         return False
 
-    def is_valid_asset_model(self, s):
-        """
-            Checks for models in assets folders
-        """
-        s = s.lower()
-
-        if not s.startswith("assets/"):
-            return False
-
-        # ✅ must have strong ML signal
-        if any(ext in s for ext in [".tflite", ".onnx", ".pt", ".nb"]):
-            return True
-        
-        if "model_" in s or "model" in s:
-            return True
-        
-        if self.is_sdk_model_path(s):
-            return True
-
-        if any(k in s for k in ["model", "weight", "tensor"]):
-            return True
-
-        return False
-
     def has_ml_runtime_patterns(self, strings):
         """
             Function to read if machine patterns in runtime
@@ -1204,32 +1180,6 @@ class ClassifySO():
             return "protobuf_model"
 
         return "unknown_binary"
-
-    def has_ml_runtime_patterns(self, strings):
-
-        indicators = [
-            "interpreter",
-            "inference",
-            "predict",
-            "tensor",
-            "input",
-            "output",
-            "allocate",
-            "invoke",
-            "net",
-            "graph"
-        ]
-
-        count = 0
-
-        for s in strings:
-            s = s.lower()
-
-            for i in indicators:
-                if i in s:
-                    count += 1
-
-        return count >= 3  # threshold
 
     def detect_ml_binaries (self, apk):
 
