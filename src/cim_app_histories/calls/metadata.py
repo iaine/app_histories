@@ -6,13 +6,9 @@ from loguru import logger
 logger.remove()  # removes all loguru handlers
 logger.add(lambda msg: None, level="CRITICAL")
 
-from androguard.core.analysis.analysis import Analysis
-from androguard.decompiler.decompile import DvClass
-from androguard.core.dex import DEX
-from androguard.core.apk import APK
-from androguard.core.analysis.analysis import ExternalMethod
 
 from localisation.localisation import Locales
+from apk.apk import extractAPK
 from dex.dex import analyseDEX
 
 import re
@@ -20,17 +16,19 @@ import re
 def main(apkname):
 
     results = {}
-    a = APK(apkname)
-    results['pkg'] = a.get_package()
-    results['version_code'] = a.get_androidversion_code()
-    results['android_name'] = a.get_androidversion_name()
-    results['permissions'] = a.get_permissions()
-    results['activities'] = a.get_activities()
-    results['intents'] = a.get_intent_filters()
-    results['localisation'] = l.get_files(a)
-    ed = analyseDEX()
-    dx = DEX(a)
-    results['ab'] = ed.find_ab_by_package(dx)
+    a = extractAPK(apkname)
+    results['applicationname'] = a.applicationname()
+    results['pkg'] = a.packagename()
+    results['version_code'] = a.android_version_code()
+    results['android_name'] = a.android_version_name()
+    results['permissions'] = a.permissions()
+    results['activities'] = a.activities()
+    results['intents'] = a.intents()
+    results['localisation'] = a.get_files()
+    
+    ed = analyseDEX(a)
+
+    results['ab'] = ed.find_ab_by_package()
     l = Locales()
 
     return results
