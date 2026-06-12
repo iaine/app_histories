@@ -31,7 +31,7 @@ class Helper():
                 _end = spl_ver[-1].split("_")[0]
                 spl_ver[1:] += _end
             
-            return float(spl_ver[0] +  "." + spl_ver[1:] )
+            return float(spl_ver[0] +  "." + "".join(spl_ver[1:]) )
         else:
             return float(softver)
 
