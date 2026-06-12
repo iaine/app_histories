@@ -16,6 +16,9 @@ class Helper():
         Run this for post-processing as it relies on a list
         of permissions, activities, or intents to be present
         :param dict_of_lists - dictionary of lists
+
+        NB: this code relies on a previous sorting of the data into
+        chronological order. software version may help here. 
         '''
         previous = None
         changes = {}
