@@ -14,22 +14,15 @@ class AB():
                 ln = l.split('\n')
                 self.data.append(ln[0].split(',')[0].replace('\ufeff','').replace('.*',''))
 
-    def find_ab_by_package(self, basepath, classes):
+    def find_ab_by_package(self, classes):
         '''
-        •	Files to Inspect: Look for experimentation frameworks, often indicated by the use of libraries like Firebase A/B Testing or flag-based components in the code.
-        •	Tools: JADX for code analysis and grep for finding feature flags.
-        o	Process:
-        1.	Decompile APKs with JADX to inspect code directly. Search for keywords like "featureFlag" or specific A/B testing libraries.
-        2.	Compare findings across versions to identify when features were in experimental phases or eventually deployed.
+            Files to Inspect: Look for experimentation frameworks, often indicated by the use of libraries like Firebase A/B Testing or flag-based components in the code.
+        
+            Also look at the tracker listing from Python. 
 
-
-        Also look at the tracker listing from Python. 
-
-        :param basepath - string for the directory
-        :return list of common packages from AB testing
+            :param classes - DEX classes from dex package. 
+            :return list of common packages from AB testing
         '''
-        if basepath == "" or basepath is None:
-            raise Exception("No basepath supplied")
 
         common = []
         for tr in self.data:
@@ -37,36 +30,6 @@ class AB():
                 common.append(tr)
 
         return common
-
-    def get_classes(self, basepath):
-        '''
-           Function to get the classes from the source folder
-
-           :param basepath
-        '''
-        #let's assume jadx is used and walk the os path. 
-        pkgs = set()
-        bpath = basepath + "sources/"
-        for root, dirs, files in os.walk(bpath):
-            path = root.split(os.sep)
-            pkgs.add(".".join(path).replace(basepath.replace('/', '.'), ""))
-        return pkgs
-
-    def get_files(self, basepath):
-        '''
-           Function to get the files from the source folder
-
-           :param basepath
-           :return list_of_files
-        '''
-        #let's assume jadx is used and walk the os path. 
-        pkgs = set()
-        bpath = basepath + "sources/"
-        for root, dirs, files in os.walk(bpath):
-            if files:
-                path = root.replace('/', '.') + files
-                pkgs.add(".".join(path).replace(basepath, ""))
-        return pkgs
 
     def find_ab_by_string(self, basepath, string_to_find):
         '''
