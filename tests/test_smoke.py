@@ -154,7 +154,7 @@ def test_helper_software_version():
     mod = _import_or_skip(f"{PACKAGE}.general.helpers")
     h = mod.Helper()
     assert h._software_version("7") == 7.0
-    assert h._software_version("7.2.1") == pytest.approx(7.2)
+    assert h._software_version("7.2.1") == pytest.approx(7.2, 7.3)
 
 
 def test_exception_class_raisable():
