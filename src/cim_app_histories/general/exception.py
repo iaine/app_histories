@@ -5,4 +5,4 @@ class CastException(Exception):
         super().__init__(message)
             
         # Now for your custom code...
-        self.errors = error
+        self.errors = errors
