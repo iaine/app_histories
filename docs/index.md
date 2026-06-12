@@ -16,6 +16,11 @@ Methods and tools are being added on an ad-hic basis.
 
 ### Using it
 
-Methods are discussed on the [methods](methods) page. There is a quickstart with further links. 
+New users should start with the [user guide](user/getting-started.md):
+installation, a first run, the [command reference](user/cli.md) for the
+`metadata`, `classify`, and `flows` workflows, [working with
+results](user/results.md) in pandas, and [running at scale](user/hpc.md)
+on HPC. Research methodology is discussed on the [methods](methods)
+page.
 
 There are tutorial place holders that will be developed with the code. 
