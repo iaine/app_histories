@@ -1,4 +1,10 @@
-import os
+"""
+    The resource files hold some information in their name
+    that can be used to trace specific language personalisation. 
+
+    The methods here focus on getting language, country, and the 
+    beginnings of device. 
+"""
 import re
 
 class Locales():
