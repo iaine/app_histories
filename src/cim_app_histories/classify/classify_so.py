@@ -623,40 +623,60 @@ class ClassifySO():
 
         return False
 
+    def is_valid_asset_model(self, s):
+        """
+            Checks for models in assets folders
+        """
+        s = s.lower()
+
+        if not s.startswith("assets/"):
+            return False
+
+        # ✅ must have strong ML signal
+        if any(ext in s for ext in [".tflite", ".onnx", ".pt", ".nb"]):
+            return True
+        
+        if "model_" in s or "model" in s:
+            return True
+        
+        if self.is_sdk_model_path(s):
+            return True
+
+        if any(k in s for k in ["model", "weight", "tensor"]):
+            return True
+
+        return False
+
     def has_ml_runtime_patterns(self, strings):
         """
-            Function to read if machine patterns in runtime
+        Strong signal: the binary's strings look like an inference
+        runtime. Counts *distinct* indicators rather than occurrences
+        (a generic word repeated across many symbol strings previously
+        passed the threshold on its own), and the indicator list keeps
+        only ML-specific terms -- bare verbs and nouns that appear in
+        virtually every large binary ("run", "execute", "buffer",
+        "input", "output", "net", "graph", "shape") made the old
+        versions fire on nearly everything.
         """
-
         indicators = [
-            # ✅ inference lifecycle
-            "interpreter", "predict", "inference",
-            "invoke", "execute", "run",
-
-            # ✅ tensors
-            "tensor", "input_tensor", "output_tensor",
-            "shape", "dimension",
-
-            # ✅ model handling
-            "load_model", "load_param",
-            "graph", "net",
-
-            # ✅ memory ops (common in ML)
-            "allocate", "buffer", "resize",
-
-            # ✅ math ops
-            "conv", "relu", "softmax", "matmul"
+            # inference lifecycle
+            "interpreter", "inference", "predict",
+            # tensors
+            "tensor", "input_tensor", "output_tensor", "ndim",
+            # model handling
+            "load_model", "load_param", "graphdef", "nnapi",
+            # unambiguous ML math
+            "softmax", "matmul", "gemm", "relu", "batchnorm",
         ]
 
-        hits = 0
-
+        found = set()
         for s in strings:
             s = s.lower()
             for ind in indicators:
                 if ind in s:
-                    hits += 1
+                    found.add(ind)
 
-        return hits >= 4  # threshold
+        return len(found) >= 3
 
     def has_ml_function_signatures(self, strings):
         """
@@ -679,21 +699,21 @@ class ClassifySO():
             Function to detect mathemetical terms
         """
 
+        # "conv" was removed: as a substring it matches "convert",
+        # which appears in most binaries. Distinct terms, not occurrences.
         math_terms = [
-            "conv", "relu", "batchnorm",
-            "sigmoid", "tanh",
-            "matmul", "gemm"
+            "conv2d", "convolution", "relu", "batchnorm",
+            "sigmoid", "tanh", "matmul", "gemm"
         ]
 
-        count = 0
-
+        found = set()
         for s in strings:
             s = s.lower()
             for m in math_terms:
                 if m in s:
-                    count += 1
+                    found.add(m)
 
-        return count >= 3
+        return len(found) >= 3
 
     def detect_tensor_structure(self, strings):
         """
@@ -709,16 +729,32 @@ class ClassifySO():
             "height"
         ]
 
-        return sum(
-            1 for s in strings for i in indicators if i in s.lower()
-        ) >= 3
+        # Distinct indicators, not occurrences: "width"/"height" alone
+        # repeated across an image library's strings must not pass.
+        found = {i for s in strings for i in indicators if i in s.lower()}
+        return len(found) >= 4
 
-    def detect_proprietary_ml_runtime(self, data):
-        """
-        Helper function to ML
-        """
+    # Weights: runtime patterns are the strong signal (3); function
+    # signatures, math ops, and tensor structure corroborate (2 each).
+    # The threshold of 5 therefore requires the strong signal PLUS at
+    # least one corroborating signal, or all three corroborating
+    # signals agreeing (2+2+2). The previous threshold of 2 was passed
+    # by any single weakest signal alone, so one detector firing --
+    # and the old has_ml_runtime_patterns fired on nearly every large
+    # binary -- produced a "high confidence" proprietary ML runtime.
+    PROPRIETARY_ML_THRESHOLD = 5
 
-        strings = self.extract_strings(data)
+    def detect_proprietary_ml_runtime(self, data, strings=None):
+        """
+        Detect an unknown/proprietary inference runtime from converging
+        independent signals.
+
+        :param data: raw bytes of the library
+        :param strings: optionally pass strings already extracted from
+            ``data`` to avoid a second full scan of the binary.
+        """
+        if strings is None:
+            strings = self.extract_strings(data)
 
         score = 0
 
@@ -734,8 +770,7 @@ class ClassifySO():
         if self.detect_tensor_structure(strings):
             score += 2
 
-        # threshold
-        return score >= 2
+        return score >= self.PROPRIETARY_ML_THRESHOLD
 
     def is_valid_model_name(self, s):
         """
@@ -1266,6 +1301,25 @@ class ClassifySO():
             return "certificate", 0
 
         # =========================
+        # ✅ ML DETECTION (checked FIRST among string heuristics)
+        # =========================
+        # This must run before the generic categories below. In particular
+        # the JNI check matches "jnienv", which appears in the symbol
+        # strings of virtually every Java-loaded .so -- including every
+        # ML runtime's JNI bridge (e.g. libtensorflowlite_jni.so) -- so
+        # with the old ordering most ML libraries were classified "jni"
+        # and never reached this scoring at all.
+        ml_keywords = [
+            "tensor", "inference", "predict",
+            "interpreter", "nnapi", "model"
+        ]
+
+        ml_score = sum(1 for k in ml_keywords if k in text)
+
+        if ml_score >= 3:
+            return "ml_runtime", ml_score
+
+        # =========================
         # ✅ 2. JNI & Programming
         # =========================
         if name.endswith("jni.so") or "jni" in name:
@@ -1387,19 +1441,6 @@ class ClassifySO():
             return "compression", 1
 
         # =========================
-        # ✅ 13. ML DETECTION
-        # =========================
-        ml_keywords = [
-            "tensor", "inference", "predict",
-            "interpreter", "nnapi", "model"
-        ]
-
-        ml_score = sum(1 for k in ml_keywords if k in text)
-
-        if ml_score >= 3:
-            return "ml_runtime", ml_score
-        
-        # =========================
         # ✅ MEDIA PROCESSING (FULL PIPELINE)
         # =========================
 
@@ -1424,7 +1465,17 @@ class ClassifySO():
             if sum(1 for k in ["frame", "decode", "media"] if k in text) >= 2:
                 return "media_processing", 1
 
-        if "alog" in name or "jazz" in name or "media" in name:
+        # liballog is ByteDance's *logging* library, not media; and bare
+        # substring checks over-matched badly: "alog" hit catalog/dialog,
+        # "media" hit ad-mediation SDKs (lib*_mediation.so) and
+        # "immediate". Word-shape the checks instead.
+        if "alog" in name and not any(k in name for k in ["catalog", "dialog"]):
+            return "logging", 1
+
+        if "jazz" in name:
+            return "media_processing", 1
+
+        if re.search(r"media(?!tion)", name):
             return "media_processing", 1
 
         # string-based detection
@@ -1437,21 +1488,6 @@ class ClassifySO():
         media_score = sum(1 for k in media_keywords if k in text)
 
         if media_score >= 3:
-            return "media_processing", 1
-
-        
-            # ByteDance / vendor media libs
-        if name.startswith("libtt") and any(k in name for k in [
-            "mux", "demux", "video", "audio", "media"
-        ]):
-            return "media_processing", 1
-        
-        # vendor media libs (pattern-based)
-        if name.startswith("lib_") and (
-            "jb" in name or "jh" in name
-        ):
-            # combine with weak string hints
-            #if sum(1 for k in ["frame", "decode", "media"] if k in text) >= 2:
             return "media_processing", 1
 
 
