@@ -110,7 +110,7 @@ def test_ab_class_constructs():
     """
     mod = _import_or_skip(f"{PACKAGE}.ab.ab")
     ab = mod.AB()
-    assert isinstance(ab.data, list) and len(ab.data) > 0
+    assert isinstance(ab.AB_CLASSES, list) and len(ab.AB_CLASSES) > 0
 
 
 def test_read_interface_constructs():
