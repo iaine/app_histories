@@ -1,5 +1,8 @@
 """
-Functions to work on the DEX code
+Methods to work on the DEX code. 
+
+Starts with extracting dex code from apk then moves onto 
+methods to work with the dex code.
 """
 import os
 import re
