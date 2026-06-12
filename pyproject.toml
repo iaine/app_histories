@@ -59,7 +59,3 @@ Issues = "https://github.com/iaine/app_histories/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-"cim_app_histories.ab" = ["*.csv"]
-"cim_app_histories.localisation" = ["*.txt"]
