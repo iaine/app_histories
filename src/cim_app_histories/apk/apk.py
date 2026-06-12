@@ -27,6 +27,12 @@ class extractAPK():
         '''
         return ";".join(apk.get_activities())
 
+    def intents (self, apk):
+        '''
+        Get intentions from manifest
+        '''
+        return ";".join(apk.get_intents()) 
+    
     def packagename (self, apk):
         '''
         Get intentions from manifest
