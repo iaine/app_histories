@@ -149,6 +149,9 @@ def test_extract_metadata_record(monkeypatch):
         def __init__(self, buff): self._buff = buff
         def find_ab_by_package(self):
             return ["com.abtasty"] if self._buff == b"dex1" else ["io.adapty"]
+        def find_trackers(self):
+            return ([{"signature": "com.adjust.sdk", "name": "Adjust",
+                      "category": "analytics"}] if self._buff == b"dex1" else [])
 
     monkeypatch.setattr(md, "extractAPK", FakeExtract)
     monkeypatch.setattr(md, "analyseDEX", FakeAnalyse)
@@ -157,6 +160,7 @@ def test_extract_metadata_record(monkeypatch):
     assert rec["pkg"] == "com.example.demo"
     assert rec["localisation"] == [("es", "", "")]
     assert rec["ab"] == ["com.abtasty", "io.adapty"]   # merged across dexes
+    assert [t["signature"] for t in rec["trackers"]] == ["com.adjust.sdk"]
 
 
 def test_cli_has_metadata_and_not_ab_localisation():
