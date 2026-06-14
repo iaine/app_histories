@@ -4,7 +4,6 @@ Methods to work on the DEX code.
 Starts with extracting dex code from apk then moves onto 
 methods to work with the dex code.
 """
-import json
 import networkx as nx
 import os
 import re
@@ -142,48 +141,57 @@ class analyseDEX():
         names = self.class_names()
         return [tr for tr in self.AB_CLASSES
                 if any(x == tr or x.startswith(tr + ".") for x in names)]
-    
-    def get_trackers(self):
+
+    #-------- Trackers ---------------
+
+    @staticmethod
+    def _load_trackers():
         '''
-          Load the Exodus tracker list into memory. 
+        Load the tracker signature table packaged alongside this module
+        (trackers.csv: signature,name,category). Loaded once and cached
+        on the class so repeated analyseDEX instances across a corpus do
+        not re-read the file.
         '''
-        fh = open('exodus.json', 'r')
-        data = json.load(fh)
+        import csv
+        path = os.path.join(os.path.dirname(__file__), "trackers.csv")
         trackers = []
-
-        for datum in data["trackers"]:
-
-            # now to parse the tags and create the links
-            d = data["trackers"][datum]["code_signature"]
-            if "|" in d:
-                for cs in d.split("|"):
-                    if cs.endswith('.'):
-                        trackers.append(cs[:-1]) 
-                    else:
-                        if cs != '': 
-                            trackers.append(cs)
-            else:
-                
-                if d.strip().endswith('.'):
-                    trackers.append(d[:-1])
-                else:
-                    if d != '': 
-                        trackers.append(d)
-
+        with open(path, newline="") as fh:
+            for row in csv.DictReader(fh):
+                sig = (row.get("signature") or "").strip()
+                if sig:
+                    trackers.append({
+                        "signature": sig,
+                        "name": (row.get("name") or "").strip(),
+                        "category": (row.get("category") or "").strip(),
+                    })
         return trackers
 
-    def trackers(self):
-        """
-            Function to find trackers in classes
-        """
+    @classmethod
+    def trackers(cls):
+        '''Tracker signature table (loaded once, cached on the class).'''
+        cached = cls.__dict__.get("_TRACKERS")
+        if cached is None:
+            cached = cls._load_trackers()
+            cls._TRACKERS = cached
+        return cached
 
-        apk_classes = self.dex.get_classes()
+    def find_trackers(self):
+        '''
+        Third-party tracker SDKs present in this dex.
 
-        tracked = []
-        for tr in self.tracker:
-            if any(tr in x for x in apk_classes):
-                tracked.append(tr)
-        return self.trackers
+        Uses the same anchored prefix matching as find_ab_by_package (a
+        signature matches a class equal to it or in a subpackage of it),
+        so a tracker is reported only when its package is actually shipped
+        in the app. Returns the full tracker descriptor (signature, name,
+        category) for each match, so callers can group by category
+        (advertising, analytics, crash_reporting, ...).
+
+        :return: list of {"signature", "name", "category"} for matches
+        '''
+        names = self.class_names()
+        return [t for t in self.trackers()
+                if any(x == t["signature"] or x.startswith(t["signature"] + ".")
+                       for x in names)]
     
     #---------Callgraph ---------------
 

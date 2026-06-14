@@ -1,0 +1,66 @@
+signature,name,category
+com.google.android.gms.analytics,Google Analytics,analytics
+com.google.firebase.analytics,Firebase Analytics,analytics
+com.google.android.gms.measurement,Google Firebase Measurement,analytics
+com.google.android.gms.ads,Google AdMob,advertising
+com.google.ads,Google Ads,advertising
+com.facebook.ads,Facebook Ads,advertising
+com.facebook.appevents,Facebook Analytics,analytics
+com.facebook.login,Facebook Login,identification
+com.flurry.android,Flurry,analytics
+com.mixpanel.android,Mixpanel,analytics
+com.amplitude.api,Amplitude,analytics
+com.segment.analytics,Segment,analytics
+com.appsflyer,AppsFlyer,analytics
+com.adjust.sdk,Adjust,analytics
+io.branch.referral,Branch,analytics
+com.kochava,Kochava,analytics
+com.localytics.android,Localytics,analytics
+com.crashlytics.android,Crashlytics,crash_reporting
+io.sentry,Sentry,crash_reporting
+com.bugsnag.android,Bugsnag,crash_reporting
+net.hockeyapp.android,HockeyApp,crash_reporting
+com.microsoft.appcenter,Microsoft App Center,crash_reporting
+com.onesignal,OneSignal,push_notification
+com.urbanairship,Airship,push_notification
+com.batch.android,Batch,push_notification
+com.clevertap.android.sdk,CleverTap,analytics
+com.leanplum,Leanplum,analytics
+com.braze,Braze,analytics
+com.appboy,Appboy (Braze),analytics
+com.swrve.sdk,Swrve,analytics
+com.taplytics.sdk,Taplytics,analytics
+com.mparticle,mParticle,analytics
+com.bytedance.applog,ByteDance AppLog,analytics
+com.bytedance.sdk.openadsdk,Pangle (ByteDance Ads),advertising
+com.ss.android.socialbase,ByteDance SocialBase,analytics
+com.umeng.analytics,Umeng Analytics,analytics
+com.umeng.commonsdk,Umeng,analytics
+com.tencent.mta,Tencent MTA,analytics
+com.tencent.stat,Tencent Stat,analytics
+com.tencent.mid,Tencent MID,identification
+com.baidu.mobstat,Baidu MobStat,analytics
+com.alibaba.analytics,Alibaba Analytics,analytics
+com.sensorsdata.analytics,Sensors Analytics,analytics
+com.yandex.metrica,Yandex AppMetrica,analytics
+com.unity3d.ads,Unity Ads,advertising
+com.applovin,AppLovin,advertising
+com.ironsource,ironSource,advertising
+com.vungle,Vungle,advertising
+com.mopub,MoPub,advertising
+com.chartboost,Chartboost,advertising
+com.inmobi,InMobi,advertising
+com.startapp,StartApp,advertising
+com.smaato,Smaato,advertising
+com.fyber,Fyber,advertising
+com.criteo,Criteo,advertising
+com.comscore,Comscore,analytics
+com.nielsen.app.sdk,Nielsen,analytics
+com.scottyab.rootbeer,RootBeer,profiling
+com.uxcam,UXCam,session_replay
+com.fullstory,FullStory,session_replay
+com.smartlook,Smartlook,session_replay
+com.dynatrace.android,Dynatrace,analytics
+com.newrelic.agent.android,New Relic,analytics
+com.datadog.android,Datadog,analytics
+com.singular.sdk,Singular,analytics
