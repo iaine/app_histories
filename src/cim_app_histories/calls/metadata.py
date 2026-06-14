@@ -30,21 +30,23 @@ def extract_metadata(apkname):
         "android_name": a.android_version_name(),
         "permissions": a.permissions(),
         "activities": a.activities(),
-        "intents": "",
-        "localisation": a.get_locales(),
+        "intents": a.intents(),
+        "localisation": a.get_files(),
     }
 
     # A/B detection must scan every classes*.dex: most large apps are
     # multidex, and scanning only the first dex undercounts SDKs.
     ab = set()
+    trackers = {}
     for buff in a.apk.get_all_dex():
-        ab.update(analyseDEX(buff).find_ab_by_package())
+        dex = analyseDEX(buff)
+        ab.update(dex.find_ab_by_package())
+        # keep one descriptor per matched tracker signature across dexes
+        for t in dex.find_trackers():
+            trackers[t["signature"]] = t
     results["ab"] = sorted(ab)
-
-    trackers = set()
-    for buff in a.apk.get_all_dex():
-        trackers.update(analyseDEX(buff).trackers())
-    results["tracker"] = sorted(trackers)
+    results["trackers"] = sorted(trackers.values(),
+                                 key=lambda t: t["signature"])
 
     return results
 
@@ -57,8 +59,9 @@ def extract_metadata(apkname):
 CSV_COLUMNS = [
     "pkg", "applicationname", "android_name", "version_code",
     "permission_count", "sensitive_permission_count",
-    "language_count", "ab_sdk_count", "activity_count",
-    "permissions", "sensitive_permissions", "languages", "ab_sdks", "trackers",
+    "language_count", "ab_sdk_count", "tracker_count", "activity_count",
+    "permissions", "sensitive_permissions", "languages", "ab_sdks",
+    "trackers", "tracker_categories",
 ]
 
 # Android runtime permissions worth counting separately in studies.
@@ -88,7 +91,18 @@ def metadata_to_row(record):
                     for loc in record.get("localisation", []) if loc})
     ab = record.get("ab", [])
     acts = _as_list(record.get("activities"))
-    trackers = record.get("trackers", [])
+
+    # trackers may be a list of descriptor dicts (current records) or,
+    # tolerantly, a list of bare signature strings.
+    raw_trackers = record.get("trackers", []) or []
+    tracker_names, tracker_cats = [], []
+    for t in raw_trackers:
+        if isinstance(t, dict):
+            tracker_names.append(t.get("name") or t.get("signature", ""))
+            if t.get("category"):
+                tracker_cats.append(t["category"])
+        else:
+            tracker_names.append(str(t))
 
     return {
         "pkg": record.get("pkg", ""),
@@ -99,12 +113,14 @@ def metadata_to_row(record):
         "sensitive_permission_count": len(sensitive),
         "language_count": len(langs),
         "ab_sdk_count": len(ab),
+        "tracker_count": len(tracker_names),
         "activity_count": len(acts),
         "permissions": ";".join(perms),
         "sensitive_permissions": ";".join(sensitive),
         "languages": ";".join(langs),
         "ab_sdks": ";".join(ab),
-        "trackers": ";".join(trackers),
+        "trackers": ";".join(tracker_names),
+        "tracker_categories": ";".join(sorted(set(tracker_cats))),
     }
 
 
