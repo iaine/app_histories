@@ -30,7 +30,7 @@ class extractAPK():
         '''
         Get intentions from manifest
         '''
-        return ";".join(self.apk.get_intents()) 
+        return ";".join(self.apk.get_intent_filters()) 
     
     def packagename (self):
         '''
@@ -115,7 +115,7 @@ class extractAPK():
         r"small|normal|large|xlarge|long|notlong|ldltr|ldrtl|round|notround|"
         r"car|desk|television|watch|appliance|vrheadset)$", re.I)
 
-    def get_files(self):
+    def get_locales(self):
         '''
         Locale qualifiers found in resource paths, deduplicated.
 

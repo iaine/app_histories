@@ -30,8 +30,8 @@ def extract_metadata(apkname):
         "android_name": a.android_version_name(),
         "permissions": a.permissions(),
         "activities": a.activities(),
-        "intents": a.intents(),
-        "localisation": a.get_files(),
+        "intents": "",
+        "localisation": a.get_locales(),
     }
 
     # A/B detection must scan every classes*.dex: most large apps are
