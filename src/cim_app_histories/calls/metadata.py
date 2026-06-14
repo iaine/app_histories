@@ -41,6 +41,11 @@ def extract_metadata(apkname):
         ab.update(analyseDEX(buff).find_ab_by_package())
     results["ab"] = sorted(ab)
 
+    trackers = set()
+    for buff in a.apk.get_all_dex():
+        trackers.update(analyseDEX(buff).trackers())
+    results["tracker"] = sorted(trackers)
+
     return results
 
 
@@ -53,7 +58,7 @@ CSV_COLUMNS = [
     "pkg", "applicationname", "android_name", "version_code",
     "permission_count", "sensitive_permission_count",
     "language_count", "ab_sdk_count", "activity_count",
-    "permissions", "sensitive_permissions", "languages", "ab_sdks",
+    "permissions", "sensitive_permissions", "languages", "ab_sdks", "trackers",
 ]
 
 # Android runtime permissions worth counting separately in studies.

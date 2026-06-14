@@ -4,6 +4,7 @@ Methods to work on the DEX code.
 Starts with extracting dex code from apk then moves onto 
 methods to work with the dex code.
 """
+import json
 import networkx as nx
 import os
 import re
@@ -141,6 +142,48 @@ class analyseDEX():
         names = self.class_names()
         return [tr for tr in self.AB_CLASSES
                 if any(x == tr or x.startswith(tr + ".") for x in names)]
+    
+    def get_trackers(self):
+        '''
+          Load the Exodus tracker list into memory. 
+        '''
+        fh = open('exodus.json', 'r')
+        data = json.load(fh)
+        trackers = []
+
+        for datum in data["trackers"]:
+
+            # now to parse the tags and create the links
+            d = data["trackers"][datum]["code_signature"]
+            if "|" in d:
+                for cs in d.split("|"):
+                    if cs.endswith('.'):
+                        trackers.append(cs[:-1]) 
+                    else:
+                        if cs != '': 
+                            trackers.append(cs)
+            else:
+                
+                if d.strip().endswith('.'):
+                    trackers.append(d[:-1])
+                else:
+                    if d != '': 
+                        trackers.append(d)
+
+        return trackers
+
+    def trackers(self):
+        """
+            Function to find trackers in classes
+        """
+
+        apk_classes = self.dex.get_classes()
+
+        tracked = []
+        for tr in self.tracker:
+            if any(tr in x for x in apk_classes):
+                tracked.append(tr)
+        return self.trackers
     
     #---------Callgraph ---------------
 
