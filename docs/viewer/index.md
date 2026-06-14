@@ -2,6 +2,6 @@
 
 These are still experimental and likely to change.
 
-[Sankey flow for listening]([docs/viewer/sankey.html])
+[Sankey flow for listening](sankey.html)
 
-[Metadata dashboard]([docs/viewer/metadata.html])
+[Metadata dashboard](metadata.html)
