@@ -93,6 +93,21 @@ slower; the traced chains are summarised into evidence, never emitted).
 `--profile` embeds per-stage timing and memory into each record — see
 the [profiling guide](../dev/profiling.md).
 
+## listening
+
+```bash
+cim-apps listening --apk-dir apps/ --outdir results/
+```
+
+The audio-specialist workflow: traces audio inputs only (microphone,
+streams, files, Bluetooth/MIDI) through the canonical chain capture →
+dsp → features → inference → output, extracting the audio parameters
+visible at each stage (sample rates, channels, frame/hop sizes, mel
+bins, codecs) and recording where they change between stages. Outputs
+one pretty-printed `.json` document per app rather than JSONL. See the
+[listening guide](listening.md) for the stage model and worked
+examples.
+
 ## Recipes
 
 Resume an interrupted corpus run (completed apps skip automatically):
