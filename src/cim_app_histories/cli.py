@@ -75,6 +75,11 @@ def collect_inputs(single, list_file, directory=None, recursive=False):
     )
 
 
+# Workflows whose output is one pretty-printed .json object per app
+# rather than JSON-Lines.
+JSON_OBJECT_WORKFLOWS = {"listening"}
+
+
 def make_output_names(inputs, kind):
     """Output filename per input. Stem-based for readability; stems that
     appear more than once (two app.apk in different subdirectories) get
@@ -84,14 +89,15 @@ def make_output_names(inputs, kind):
     import hashlib
     from collections import Counter
 
+    ext = "json" if kind in JSON_OBJECT_WORKFLOWS else "jsonl"
     stems = Counter(p.stem for p in inputs)
     names = {}
     for p in inputs:
         if stems[p.stem] > 1:
             h = hashlib.sha1(str(p.resolve()).encode()).hexdigest()[:8]
-            names[p] = f"{p.stem}.{h}.{kind}.jsonl"
+            names[p] = f"{p.stem}.{h}.{kind}.{ext}"
         else:
-            names[p] = f"{p.stem}.{kind}.jsonl"
+            names[p] = f"{p.stem}.{kind}.{ext}"
     return names
 
 
@@ -100,13 +106,20 @@ def output_path(outdir, input_path, kind):
 
 
 def write_jsonl_atomic(path, records):
-    """Write records to a temp file and rename into place."""
+    """Write records to a temp file and rename into place. Paths ending
+    .json get one pretty-printed object (the single record, or a list);
+    .jsonl gets one compact JSON object per line."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
     try:
         with open(tmp, "w") as fh:
-            for rec in records:
-                fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            if path.suffix == ".json":
+                obj = records[0] if len(records) == 1 else records
+                json.dump(obj, fh, ensure_ascii=False, indent=2)
+                fh.write("\n")
+            else:
+                for rec in records:
+                    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
         tmp.replace(path)           # atomic on POSIX filesystems
     finally:
         tmp.unlink(missing_ok=True)
@@ -197,10 +210,32 @@ def task_metadata(apk_path, options=None):
                  **extract_metadata(str(apk_path)))]
 
 
+def task_listening(apk_path, options=None):
+    """Trace audio inputs and their parameters through one app's
+    processing chain (capture -> dsp -> features -> inference -> output)
+    to models and network endpoints. Writes one .json object per app."""
+    from androguard.core.apk import APK
+    from .calls.listening import trace_listening
+
+    apk = APK(str(apk_path))
+    files = [(f, apk.get_file(f)) for f in apk.get_files()
+             if f.endswith(".so") or f.lower().endswith(
+                 (".tflite", ".lite", ".onnx", ".pt", ".ptl", ".pb", ".mnn",
+                  ".param", ".nb", ".ms", ".om", ".bytenn", ".model", ".dat"))]
+
+    result = trace_listening(files, permissions=apk.get_permissions())
+    rec = dict(base_record(apk_path, "listening"),
+               app={"pkg": apk.get_package(),
+                    "version": apk.get_androidversion_name()},
+               **result)
+    return [rec]
+
+
 TASKS = {
     "classify": task_classify,
     "flows": task_flows,
     "metadata": task_metadata,
+    "listening": task_listening,
 }
 
 
@@ -271,6 +306,23 @@ def add_common(sub, input_flag, input_help):
                      help="reprocess inputs whose output already exists")
 
 
+def _aggregate_metadata_csv(outdir, csv_path):
+    """Collect every *.metadata.jsonl record under outdir into one CSV.
+    Run as a post-pass so it captures outputs from all array shards that
+    share the directory, not just this invocation's inputs."""
+    from .calls.metadata import write_metadata_csv
+
+    records = []
+    for path in sorted(Path(outdir).glob("*.metadata.jsonl")):
+        with open(path) as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    records.append(json.loads(line))
+    write_metadata_csv(records, csv_path)
+    print(f"wrote {len(records)} rows to {csv_path}", file=sys.stderr)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="cim-apps",
                                      description=__doc__,
@@ -285,6 +337,15 @@ def main(argv=None):
     s = subs.add_parser("metadata",
                         help="app identity, versions, permissions, "
                              "locales, and A/B SDKs per APK")
+    add_common(s, "--apk", "path to one .apk file")
+    s.add_argument("--csv", metavar="FILE",
+                   help="after the run, aggregate all metadata records in "
+                        "--outdir into one CSV (one row per app)")
+
+    s = subs.add_parser("listening",
+                        help="trace audio inputs and their parameters "
+                             "through capture/dsp/features/inference to "
+                             "models and endpoints (one .json per app)")
     add_common(s, "--apk", "path to one .apk file")
 
     s = subs.add_parser("flows",
@@ -310,8 +371,14 @@ def main(argv=None):
 
     options = {"trace": getattr(args, "trace", False),
                "profile": getattr(args, "profile", False)}
-    return run_batch(args.command, inputs, args.outdir, args.workers,
-                     args.force, options, out_names)
+    rc = run_batch(args.command, inputs, args.outdir, args.workers,
+                   args.force, options, out_names)
+
+    csv_path = getattr(args, "csv", None)
+    if csv_path:
+        _aggregate_metadata_csv(args.outdir, csv_path)
+
+    return rc
 
 
 if __name__ == "__main__":
