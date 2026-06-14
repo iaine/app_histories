@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Visualising results - CIM App Histories Toolkit</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">CIM App Histories Toolkit</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../methods/" class="nav-link">Methods</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Ab</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../ab/abtasty/" class="dropdown-item">ABTasty</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/adapty/" class="dropdown-item">Adapty</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/adobe/" class="dropdown-item">Adobe</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/amplitude/" class="dropdown-item">Amplitude</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/apphud/" class="dropdown-item">AppHud</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/applause/" class="dropdown-item">Applause</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/apptimize/" class="dropdown-item">Apptimize</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/batch/" class="dropdown-item">Batch</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/clevertap/" class="dropdown-item">Clevertap</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/configcat/" class="dropdown-item">ConfigCat</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/gameanalytics/" class="dropdown-item">GameAnalytics</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/games%20of%20whales/" class="dropdown-item">Games of Whales</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/google/" class="dropdown-item">Google</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/huawei/" class="dropdown-item">Huawei</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/kameleoon/" class="dropdown-item">Kameleoon</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/launchdarkly/" class="dropdown-item">LaunchDarkly</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/mparticle/" class="dropdown-item">mParticle</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/optimilzely/" class="dropdown-item">Optimilzely</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/posthog/" class="dropdown-item">postHog</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/qonversion/" class="dropdown-item">Qonversion</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/shence/" class="dropdown-item">Shence?</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/split/" class="dropdown-item">Split</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/splitforce/" class="dropdown-item">Splitforce</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/statsig/" class="dropdown-item">Statsig</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/swrv/" class="dropdown-item">Swrv</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/taplytics/" class="dropdown-item">Taplytics</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/umeng/" class="dropdown-item">Umeng</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/unity/" class="dropdown-item">Unity</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/uxcam/" class="dropdown-item">UXCam</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/vwo/" class="dropdown-item">VWO</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Dev</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../dev/" class="dropdown-item">Developer Documents</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/cli/" class="dropdown-item">Command reference</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/download/" class="dropdown-item">Download</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/getting-started/" class="dropdown-item">Getting started</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/logging/" class="dropdown-item">Logging</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/profiling/" class="dropdown-item">Profiling: timing and memory tracing</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/results/" class="dropdown-item">Working with results</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Howto</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../howto/app_language/" class="dropdown-item">App language</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Tutorials</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../tutorials/ab/" class="dropdown-item">AB Testing Tutorial</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/listening/" class="dropdown-item">Listening: tracing audio inputs and their parameters</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/localisation/" class="dropdown-item">Localisation</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/manifests/" class="dropdown-item">Manifests</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/personalisation/" class="dropdown-item">Personalisation</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../contributions/" class="dropdown-item">Contributions</a>
+</li>
+                                    
+<li>
+    <a href="../hpc/" class="dropdown-item">Running at scale</a>
+</li>
+                                    
+<li>
+    <a href="../installation/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Visualising results</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Viewer</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../viewer/" class="dropdown-item">Index</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../installation/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../../viewer/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#visualising-results" class="nav-link">Visualising results</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#using-it" class="nav-link">Using it</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#reading-a-listening-diagram" class="nav-link">Reading a listening diagram</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#sample-files" class="nav-link">Sample files</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#notes-and-limits" class="nav-link">Notes and limits</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#metadata-visualisations" class="nav-link">Metadata visualisations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="visualising-results">Visualising results</h1>
+<p>A small self-contained viewer renders the <code>flows</code> and <code>listening</code>
+outputs as Sankey diagrams — no install, no server, no build step.</p>
+<h2 id="using-it">Using it</h2>
+<p>Open <code>docs/viewer/sankey.html</code> in any browser and drag result files
+onto it (or click to choose). You can drop <strong>one file or many at once</strong>,
+and the viewer picks the right view automatically:</p>
+<ul>
+<li><strong>One app</strong> → a Sankey diagram of that app's flow.</li>
+<li><strong>Many versions of one app</strong> (same package, different version
+  numbers) → a <em>version timeline</em>: a table of sources, tasks, endpoints,
+  and parameter transitions per version, with anything gained since the
+  previous version marked green and anything removed struck through.</li>
+<li><strong>Many different apps</strong> (different packages) → an <em>app comparison</em>: a
+  presence matrix showing which sources, tasks, and endpoints each app
+  has, so Spotify, Deezer, TikTok and Otter line up side by side.</li>
+</ul>
+<p>A mode toggle lets you override the automatic choice — e.g. force the
+comparison view onto a set of versions, or open any single app's Sankey
+from a corpus. The scenario is inferred from the package names in the
+files: identical package = versions, differing = comparison.</p>
+<p>The diagram colours nodes by role. For <code>flows</code>: inputs, modules,
+models, endpoints. For <code>listening</code>: the five processing stages
+(capture → dsp → features → inference → output), plus sources, models,
+and endpoints. Hover any link to see the evidence behind it — the
+keywords, APIs, or URL categories that justified it — and hover a node
+for its kind.</p>
+<p>For <code>listening</code> records, parameter transitions appear below the
+diagram as chips: <code>sample_rate: [48000] → [16000] (capture→dsp)</code>. These
+are the signal-shape changes the workflow detected between stages.</p>
+<h2 id="reading-a-listening-diagram">Reading a listening diagram</h2>
+<p>Left to right follows the audio chain. A speech-to-text app reads as
+microphone → capture library → (dsp, features stages) → a model and a
+task label, with an upload endpoint at the right edge; the transition
+chips below show the 48 kHz→16 kHz, stereo→mono collapse that marks an
+ASR front end. A music app reads from a network-stream source into
+analysis features and a recommendation task ending at a recommendation
+endpoint — and shows no microphone branch, because none was evidenced.</p>
+<h2 id="sample-files">Sample files</h2>
+<p><code>docs/viewer/samples/</code> contains synthetic <code>Demo.flows.jsonl</code>,
+<code>STT.listening.json</code>, and <code>Music.listening.json</code> so you can see the
+viewer working before running the toolkit on real APKs. These are
+schematic illustrations, not analyses of real apps.</p>
+<h2 id="notes-and-limits">Notes and limits</h2>
+<p>The viewer is read-only and runs entirely in the browser, so result
+files never leave your machine — safe for sensitive corpora. It loads
+d3 and d3-sankey from a CDN, so the first open needs network access
+(cache it, or vendor the two scripts locally for fully offline use).
+Link widths reflect evidence scores, not measured data volume, and the
+diagram inherits every caveat of the underlying static analysis:
+treat it as a map of evidenced <em>possibility</em>, not observed runtime
+behaviour. For a whole-corpus view rather than one app at a time,
+aggregate the JSON in pandas (see <a href="results.md">Working with results</a>)
+and feed your own totals to a plotting library.</p>
+<h2 id="metadata-visualisations">Metadata visualisations</h2>
+<p>The <code>metadata</code> output is categorical rather than a flow, so it has its
+own viewer: open <code>docs/viewer/metadata.html</code> and drop one or more
+<code>*.metadata.jsonl</code>/<code>.json</code> files. As with the flow viewer, the view is
+chosen automatically and can be overridden with the mode toggle:</p>
+<ul>
+<li><strong>One app → dashboard.</strong> Counts of permissions, languages, A/B and
+  analytics SDKs, and activities, with the full lists below; sensitive
+  permissions (microphone, camera, location, contacts...) are flagged
+  in red.</li>
+<li><strong>Many versions of one app → growth timeline.</strong> A line chart of
+  permission/language/SDK counts across versions, plus a table showing
+  exactly what each version <em>added</em> (green) or <em>removed</em> (struck) since
+  the previous one. This is where a study can see, for example, the
+  version at which an app first requested microphone access or adopted
+  a new analytics SDK.</li>
+<li><strong>Many apps → comparison.</strong> Summary cards plus presence matrices for
+  permissions, SDKs, and languages, so a set like Spotify / Deezer /
+  TikTok / Otter lines up feature by feature; sensitive permissions are
+  highlighted across the matrix.</li>
+</ul>
+<p>Sample files live in <code>docs/viewer/samples/</code> (a three-version series and
+a four-app set). These are schematic illustrations, not analyses of the
+named apps.</p>
+<p>The metadata viewer also has an <strong>Export CSV</strong> button that downloads whatever records are loaded as a spreadsheet — identical columns to the CLI's <code>--csv</code>, so the two are interchangeable.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

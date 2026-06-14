@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Profiling: timing and memory tracing - CIM App Histories Toolkit</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">CIM App Histories Toolkit</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../methods/" class="nav-link">Methods</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Ab</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../ab/abtasty/" class="dropdown-item">ABTasty</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/adapty/" class="dropdown-item">Adapty</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/adobe/" class="dropdown-item">Adobe</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/amplitude/" class="dropdown-item">Amplitude</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/apphud/" class="dropdown-item">AppHud</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/applause/" class="dropdown-item">Applause</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/apptimize/" class="dropdown-item">Apptimize</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/batch/" class="dropdown-item">Batch</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/clevertap/" class="dropdown-item">Clevertap</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/configcat/" class="dropdown-item">ConfigCat</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/gameanalytics/" class="dropdown-item">GameAnalytics</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/games%20of%20whales/" class="dropdown-item">Games of Whales</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/google/" class="dropdown-item">Google</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/huawei/" class="dropdown-item">Huawei</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/kameleoon/" class="dropdown-item">Kameleoon</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/launchdarkly/" class="dropdown-item">LaunchDarkly</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/mparticle/" class="dropdown-item">mParticle</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/optimilzely/" class="dropdown-item">Optimilzely</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/posthog/" class="dropdown-item">postHog</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/qonversion/" class="dropdown-item">Qonversion</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/shence/" class="dropdown-item">Shence?</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/split/" class="dropdown-item">Split</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/splitforce/" class="dropdown-item">Splitforce</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/statsig/" class="dropdown-item">Statsig</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/swrv/" class="dropdown-item">Swrv</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/taplytics/" class="dropdown-item">Taplytics</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/umeng/" class="dropdown-item">Umeng</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/unity/" class="dropdown-item">Unity</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/uxcam/" class="dropdown-item">UXCam</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/vwo/" class="dropdown-item">VWO</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Dev</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../" class="dropdown-item">Developer Documents</a>
+</li>
+                                    
+<li>
+    <a href="../cli/" class="dropdown-item">Command reference</a>
+</li>
+                                    
+<li>
+    <a href="../download/" class="dropdown-item">Download</a>
+</li>
+                                    
+<li>
+    <a href="../getting-started/" class="dropdown-item">Getting started</a>
+</li>
+                                    
+<li>
+    <a href="../logging/" class="dropdown-item">Logging</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Profiling: timing and memory tracing</a>
+</li>
+                                    
+<li>
+    <a href="../results/" class="dropdown-item">Working with results</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Howto</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../howto/app_language/" class="dropdown-item">App language</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Tutorials</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../tutorials/ab/" class="dropdown-item">AB Testing Tutorial</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/listening/" class="dropdown-item">Listening: tracing audio inputs and their parameters</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/localisation/" class="dropdown-item">Localisation</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/manifests/" class="dropdown-item">Manifests</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/personalisation/" class="dropdown-item">Personalisation</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../user/contributions/" class="dropdown-item">Contributions</a>
+</li>
+                                    
+<li>
+    <a href="../../user/hpc/" class="dropdown-item">Running at scale</a>
+</li>
+                                    
+<li>
+    <a href="../../user/installation/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../user/visualising/" class="dropdown-item">Visualising results</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Viewer</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../viewer/" class="dropdown-item">Index</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../logging/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../results/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#profiling-timing-and-memory-tracing" class="nav-link">Profiling: timing and memory tracing</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#why-stage-profiling-rather-than-line-profiling" class="nav-link">Why stage profiling rather than line profiling</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#quick-start" class="nav-link">Quick start</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#reading-the-report" class="nav-link">Reading the report</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#costs-and-caveats" class="nav-link">Costs and caveats</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#when-to-use-external-tools-instead" class="nav-link">When to use external tools instead</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="profiling-timing-and-memory-tracing">Profiling: timing and memory tracing</h1>
+<p>The toolkit includes a stage profiler (<code>cim_app_histories.general.perf</code>)
+for measuring where pipeline runs spend time and memory. This page
+explains why it works the way it does, how to use it from the CLI and
+from code, how to read its numbers, and when to reach for external
+tools instead.</p>
+<h2 id="why-stage-profiling-rather-than-line-profiling">Why stage profiling rather than line profiling</h2>
+<p>Line-oriented tools such as <code>memory_profiler</code> decorate individual
+functions and report per-line costs. That model fights class-structured
+code (every method needs decorating, inheritance and callbacks confuse
+attribution) and is the wrong granularity for a corpus pipeline anyway:
+the question is not "which line allocates" but "what does each <em>stage</em>
+— string extraction, classification, link building — cost, summed over
+ten thousand APKs".</p>
+<p>The harness therefore profiles named stages. You place the boundaries
+with a context manager, so it follows any code structure, and results
+are aggregated by stage name: a stage entered once per file across a
+whole shard produces one summary row (count, total, max), keeping the
+report at JSON-line size no matter how large the corpus.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>From the CLI, add <code>--profile</code> to a <code>flows</code> run:</p>
+<pre><code class="language-bash">cim-apps flows --apk app.apk --outdir results/ --profile
+</code></pre>
+<p>Each output record in <code>results/&lt;app&gt;.flows.jsonl</code> gains a <code>"profile"</code>
+section. On a SLURM array this means per-stage economics for every app
+in the corpus, embedded in the data you were already collecting:</p>
+<pre><code class="language-bash">#SBATCH --array=0-99
+apptainer run cim-apps.sif flows \
+    --apk-list corpus.txt --outdir results/ --profile \
+    --task-index &quot;$SLURM_ARRAY_TASK_ID&quot; --task-count 100
+</code></pre>
+<p>From code:</p>
+<pre><code class="language-python">from cim_app_histories.general.perf import StageProfiler
+from cim_app_histories.calls.multimodal_pipeline import build_flow_graph
+
+prof = StageProfiler()
+graph = build_flow_graph(files, permissions=perms, profiler=prof)
+report = prof.report()
+prof.close()
+</code></pre>
+<p>To instrument your own code, wrap the phases that matter:</p>
+<pre><code class="language-python">prof = StageProfiler()
+for name, data in files:
+    with prof.stage(&quot;extract&quot;):
+        strings = extract(data)
+    with prof.stage(&quot;classify&quot;):
+        result = classify(name, strings)
+print(prof.report())
+</code></pre>
+<p>Stages nest, producing dotted labels (<code>outer.inner</code>). A decorator form
+exists for wrapping existing callables without editing them:
+<code>classify = prof.wrap("classify", classifier.classify_so_pre)</code>.</p>
+<h2 id="reading-the-report">Reading the report</h2>
+<pre><code class="language-json">{&quot;total_wall_s&quot;: 4.36, &quot;rss_kb_now&quot;: 95436, &quot;python_memory_traced&quot;: true,
+ &quot;stages&quot;: [
+   {&quot;stage&quot;: &quot;classify_module&quot;, &quot;calls&quot;: 30, &quot;wall_s&quot;: 1.504,
+    &quot;wall_max_s&quot;: 0.089, &quot;cpu_s&quot;: 1.489, &quot;py_kb_delta&quot;: 0,
+    &quot;py_kb_peak_max&quot;: 63753, &quot;rss_kb_delta&quot;: 61552}, ...]}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>calls</code></td>
+<td>times the stage was entered (aggregated by name)</td>
+</tr>
+<tr>
+<td><code>wall_s</code> / <code>wall_max_s</code></td>
+<td>total and worst-case elapsed time — what a user or job waits for</td>
+</tr>
+<tr>
+<td><code>cpu_s</code></td>
+<td>process CPU time; a large wall−cpu gap means waiting (I/O, locks), not computing</td>
+</tr>
+<tr>
+<td><code>py_kb_delta</code></td>
+<td>net Python-heap growth across all calls; persistent growth here suggests retained objects</td>
+</tr>
+<tr>
+<td><code>py_kb_peak_max</code></td>
+<td>highest Python-heap high-water mark observed during any single call</td>
+</tr>
+<tr>
+<td><code>rss_kb_delta</code></td>
+<td>net process RSS growth; this is what the OS and SLURM see, and includes native allocations invisible to tracemalloc</td>
+</tr>
+</tbody>
+</table>
+<p>Two readings worth internalising. A stage with large <code>py_kb_peak_max</code>
+but near-zero <code>py_kb_delta</code> allocates transiently and cleans up — the
+peak tells you the memory headroom one worker needs. A stage where
+<code>rss_kb_delta</code> grows but <code>py_kb_delta</code> does not points at native-code
+allocations (or allocator fragmentation), which is your cue for memray
+(below).</p>
+<p>Per-app reports across a corpus analyse naturally with pandas:</p>
+<pre><code class="language-python">import json, pandas as pd, pathlib
+rows = [{&quot;app&quot;: r[&quot;input&quot;], **s}
+        for p in pathlib.Path(&quot;results&quot;).glob(&quot;*.flows.jsonl&quot;)
+        for r in map(json.loads, open(p))
+        for s in r.get(&quot;profile&quot;, {}).get(&quot;stages&quot;, [])]
+df = pd.DataFrame(rows)
+print(df.groupby(&quot;stage&quot;)[[&quot;wall_s&quot;, &quot;py_kb_peak_max&quot;]]
+        .agg({&quot;wall_s&quot;: &quot;sum&quot;, &quot;py_kb_peak_max&quot;: &quot;max&quot;})
+        .sort_values(&quot;wall_s&quot;, ascending=False))
+</code></pre>
+<h2 id="costs-and-caveats">Costs and caveats</h2>
+<p>The profiler is honest about its own overhead. Python-memory tracing
+uses <code>tracemalloc</code>, which typically slows execution 1.5–3x and adds
+memory of its own; it is therefore opt-in. For timing and RSS only, at
+near-zero overhead, construct <code>StageProfiler(trace_python_memory=False)</code>.
+Library code instrumented with stages defaults to <code>NullProfiler</code>, a
+do-nothing stand-in, so unprofiled production runs are unaffected — the
+test suite asserts that profiled and unprofiled runs produce identical
+results.</p>
+<p>Three measurement caveats. First, <code>tracemalloc</code> sees Python allocations
+only; native allocations show up solely in the RSS columns. Second, the
+peak counter is process-global: a nested stage's reset truncates its
+parent's peak window, so treat <code>py_kb_peak_max</code> as reliable for stages
+with no profiled children (timings and deltas nest correctly). Third,
+RSS is read from <code>/proc/self/statm</code>, so RSS columns are zero on
+non-Linux platforms; everything else works everywhere.</p>
+<h2 id="when-to-use-external-tools-instead">When to use external tools instead</h2>
+<p>The harness gives continuous, corpus-scale numbers embedded in your
+output data. For occasional deep dives, three external tools complement
+it without code changes. <code>py-spy</code> produces sampled flamegraphs of a live
+process and can attach to a running HPC task by PID
+(<code>py-spy record -o flame.svg --pid &lt;pid&gt;</code> or
+<code>py-spy record -- cim-apps flows ...</code>), at negligible overhead. <code>memray</code>
+(<code>memray run --native -o out.bin cim-apps flows ...</code>, then
+<code>memray flamegraph out.bin</code>) produces allocation flamegraphs that <em>do</em>
+include native extensions — the strongest tool whenever RSS and
+tracemalloc disagree. <code>Scalene</code> offers line-level profiles separating
+Python, native, and copy costs, useful on a laptop once the harness has
+told you which stage to stare at. For whole-job ground truth on the
+cluster, <code>/usr/bin/time -v</code> reports peak RSS for any command, and
+<code>sacct --format=JobID,MaxRSS,Elapsed</code> reports what SLURM actually
+charged you; the harness's numbers should reconcile with both.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
