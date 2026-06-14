@@ -88,6 +88,7 @@ def metadata_to_row(record):
                     for loc in record.get("localisation", []) if loc})
     ab = record.get("ab", [])
     acts = _as_list(record.get("activities"))
+    trackers = record.get("trackers", [])
 
     return {
         "pkg": record.get("pkg", ""),
@@ -103,6 +104,7 @@ def metadata_to_row(record):
         "sensitive_permissions": ";".join(sensitive),
         "languages": ";".join(langs),
         "ab_sdks": ";".join(ab),
+        "trackers": ";".join(trackers),
     }
 
 
