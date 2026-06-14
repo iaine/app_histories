@@ -42,3 +42,74 @@ def extract_metadata(apkname):
     results["ab"] = sorted(ab)
 
     return results
+
+
+# Canonical CSV column order. One row per app; the categorical fields
+# (permissions, locales, SDKs, activities, intents) are flattened to
+# counts plus a ;-joined list, which keeps the table readable while
+# preserving the values. This ordering is the contract the metadata
+# viewer's CSV export mirrors, so both produce identical columns.
+CSV_COLUMNS = [
+    "pkg", "applicationname", "android_name", "version_code",
+    "permission_count", "sensitive_permission_count",
+    "language_count", "ab_sdk_count", "activity_count",
+    "permissions", "sensitive_permissions", "languages", "ab_sdks",
+]
+
+# Android runtime permissions worth counting separately in studies.
+SENSITIVE_PERMISSIONS = {
+    "RECORD_AUDIO", "CAMERA", "ACCESS_FINE_LOCATION",
+    "ACCESS_COARSE_LOCATION", "ACCESS_BACKGROUND_LOCATION",
+    "READ_CONTACTS", "READ_SMS", "READ_CALL_LOG", "BODY_SENSORS",
+    "READ_EXTERNAL_STORAGE", "READ_MEDIA_AUDIO", "READ_MEDIA_IMAGES",
+}
+
+
+def _as_list(value):
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str) and value:
+        return value.split(";")
+    return []
+
+
+def metadata_to_row(record):
+    """Flatten one metadata record (the dict from extract_metadata, or a
+    full CLI output record wrapping it) into a flat dict keyed by
+    CSV_COLUMNS. Pure; no I/O."""
+    perms = [p.split(".")[-1] for p in _as_list(record.get("permissions"))]
+    sensitive = [p for p in perms if p in SENSITIVE_PERMISSIONS]
+    langs = sorted({loc[0] if isinstance(loc, (list, tuple)) else loc
+                    for loc in record.get("localisation", []) if loc})
+    ab = record.get("ab", [])
+    acts = _as_list(record.get("activities"))
+
+    return {
+        "pkg": record.get("pkg", ""),
+        "applicationname": record.get("applicationname", ""),
+        "android_name": record.get("android_name", ""),
+        "version_code": record.get("version_code", ""),
+        "permission_count": len(perms),
+        "sensitive_permission_count": len(sensitive),
+        "language_count": len(langs),
+        "ab_sdk_count": len(ab),
+        "activity_count": len(acts),
+        "permissions": ";".join(perms),
+        "sensitive_permissions": ";".join(sensitive),
+        "languages": ";".join(langs),
+        "ab_sdks": ";".join(ab),
+    }
+
+
+def write_metadata_csv(records, path):
+    """Write a list of metadata records to a CSV at ``path``, one row per
+    app, using CSV_COLUMNS. Values are properly quoted by the csv module,
+    so the ;-joined lists never break columns."""
+    import csv as _csv
+
+    with open(path, "w", newline="") as fh:
+        writer = _csv.DictWriter(fh, fieldnames=CSV_COLUMNS,
+                                 extrasaction="ignore")
+        writer.writeheader()
+        for record in records:
+            writer.writerow(metadata_to_row(record))
