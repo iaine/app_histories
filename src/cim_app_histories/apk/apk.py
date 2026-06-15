@@ -13,7 +13,6 @@ class extractAPK():
             Extract the APK
         """
         self.apk = APK(apkname)
-        self.trackers = self.get_trackers()
 
     def permissions(self):
         '''
