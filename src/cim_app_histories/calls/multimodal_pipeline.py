@@ -151,12 +151,21 @@ _MODEL_NAME_HINT = re.compile(
     r"detect|classif|recogni|face|voice|speech)", re.I)
 
 
+# Stock third-party assets that match model heuristics but are not the
+# app's own AI: ML Kit bundled models, timezone DBs, font/ICU blobs.
+_MODEL_BOILERPLATE = re.compile(
+    r"(mlkit|ml_kit|gms/|play-services|threeten|tzdb|/icu|fonts?/|"
+    r"emoji|barcode_|firebase/)", re.I)
+
+
 def looks_like_model(name):
     """True if a file is a model asset by extension, or an under-assets
     .bin/.dat/extension-less file whose name hints at a model. The old
     fixed-extension list missed .bin-packaged models (ggml/ncnn/llama)
     that are extremely common, leaving real models undetected."""
     low = name.lower()
+    if _MODEL_BOILERPLATE.search(low):
+        return False
     if low.endswith(MODEL_EXTENSIONS):
         return True
     if ("assets/" in low or "/ml/" in low or "model" in low):

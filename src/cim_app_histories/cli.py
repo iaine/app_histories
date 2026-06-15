@@ -170,6 +170,66 @@ def _collect_apk_files(apk):
     return out
 
 
+def _collect_apk_files(apk):
+    """Native libs + model assets from an APK, using the shared
+    model-detection heuristic so .bin/ggml/ncnn models are included."""
+    from .calls.multimodal_pipeline import looks_like_model
+    out = []
+    for f in apk.get_files():
+        if f.endswith(".so") or looks_like_model(f):
+            out.append((f, apk.get_file(f)))
+    return out
+
+
+def _gather_split_apks(apk_path):
+    """Return sibling split APKs of a base App Bundle download.
+
+    Apps installed from Play / pulled from a device arrive as a base
+    apk plus split_config.<abi>.apk / split_config.<density>.apk files
+    that hold the native libraries. Analysing the base alone sees zero
+    .so libraries. We pull in siblings that look like splits of the
+    same package directory.
+    """
+    base = Path(apk_path)
+    sibs = []
+    for cand in sorted(base.parent.glob("*.apk")):
+        if cand == base:
+            continue
+        n = cand.name.lower()
+        if ("split" in n or "config." in n or n.startswith(base.stem.lower())
+                or cand.stem.startswith(base.stem)):
+            sibs.append(cand)
+    return sibs
+
+
+def _collect_all_files(apk_path):
+    """Files from the APK plus any sibling split APKs. Returns
+    (files, info) where info notes whether splits were merged so the
+    caller can record provenance and warn on a likely-incomplete base."""
+    from androguard.core.apk import APK
+    apk = APK(str(apk_path))
+    files = _collect_apk_files(apk)
+    info = {"native_libs": sum(1 for n, _ in files if n.endswith(".so")),
+            "splits_merged": []}
+
+    if info["native_libs"] == 0:
+        for sib in _gather_split_apks(apk_path):
+            try:
+                sapk = APK(str(sib))
+            except Exception:
+                continue
+            sfiles = _collect_apk_files(sapk)
+            if any(n.endswith(".so") for n, _ in sfiles):
+                files.extend(sfiles)
+                info["splits_merged"].append(sib.name)
+        info["native_libs"] = sum(1 for n, _ in files if n.endswith(".so"))
+
+    # likely an App Bundle base whose libraries were not found
+    info["incomplete_base_apk"] = (
+        info["native_libs"] == 0 and not info["splits_merged"])
+    return apk, files, info
+
+
 def task_flows(apk_path, options=None):
     """Trace inputs -> modules (libs/models) -> onward processes for one
     APK and return the flow graph. Pure data out; chains never emitted."""
@@ -183,9 +243,7 @@ def task_flows(apk_path, options=None):
         from .general.perf import StageProfiler
         profiler = StageProfiler()
 
-    apk = APK(str(apk_path))
-
-    files = _collect_apk_files(apk)
+    apk, files, source_info = _collect_all_files(apk_path)
     permissions = apk.get_permissions()
 
     dx = None
@@ -200,7 +258,13 @@ def task_flows(apk_path, options=None):
     rec = dict(base_record(apk_path, "flows"),
                graph=graph,
                sankey=to_sankey(graph),
-               summary=graph["summary"])
+               summary={**graph["summary"], **source_info})
+    if source_info["incomplete_base_apk"]:
+        rec["warning"] = ("no native libraries found; this looks like the "
+                          "base APK of a split App Bundle. Provide the "
+                          "universal APK or the split_config.*.apk files "
+                          "(e.g. download from APKPure, or merge splits) "
+                          "for complete flow analysis.")
     if profiler is not None:
         rec["profile"] = profiler.report()
         profiler.close()
@@ -225,14 +289,18 @@ def task_listening(apk_path, options=None):
     from androguard.core.apk import APK
     from .calls.listening import trace_listening
 
-    apk = APK(str(apk_path))
-    files = _collect_apk_files(apk)
+    apk, files, source_info = _collect_all_files(apk_path)
 
     result = trace_listening(files, permissions=apk.get_permissions())
+    result["summary"] = {**result.get("summary", {}), **source_info}
     rec = dict(base_record(apk_path, "listening"),
                app={"pkg": apk.get_package(),
                     "version": apk.get_androidversion_name()},
                **result)
+    if source_info["incomplete_base_apk"]:
+        rec["warning"] = ("no native libraries found; likely a split App "
+                          "Bundle base APK. Provide the universal APK or "
+                          "split_config.*.apk files for complete analysis.")
     return [rec]
 
 
