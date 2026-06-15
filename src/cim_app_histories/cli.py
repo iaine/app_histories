@@ -231,19 +231,22 @@ def _collect_all_files(apk_path):
 
 
 def _extract_dex_urls(apk):
-    """All http(s) URLs in the app's DEX string pools. Chat/streaming
-    backends are constants in Java/Kotlin, not native libraries, so this
-    is where an LLM client's or music app's real endpoints are found."""
-    import re as _re
-    urls = []
+    """All http(s) URLs in the app's DEX: both whole-string literals and
+    URLs assembled at runtime from fragments (StringBuilder, Uri.Builder,
+    Retrofit/OkHttp). Chat/streaming backends are constants in Java/Kotlin,
+    not native libraries, and are frequently built from fragments rather
+    than stored whole, so both styles are needed."""
+    from .dex.dex import analyseDEX
+    urls = set()
     try:
         for dex in apk.get_all_dex():
-            from androguard.core.dex import DEX
-            for sstr in DEX(dex).get_strings():
-                urls.extend(_re.findall(r"https?://[^\s\"'<>]+", str(sstr)))
+            try:
+                urls.update(analyseDEX(dex).all_urls())
+            except Exception:
+                continue
     except Exception:
         pass
-    return urls
+    return sorted(urls)
 
 
 def task_flows(apk_path, options=None):

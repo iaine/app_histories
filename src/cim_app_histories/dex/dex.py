@@ -69,6 +69,100 @@ class analyseDEX():
 
         return strs
 
+    # Builder/host fragments that signal a URL is being assembled rather
+    # than stored as one literal. Java URL building rarely leaves a whole
+    # https://host/path string in the constant pool; it is split across
+    # const-string fragments fed into StringBuilder.append / Uri.Builder /
+    # Retrofit / OkHttp, so http_strings (which only matches whole-URL
+    # literals) misses them.
+    _URL_BUILDER_HINTS = (
+        "StringBuilder", "Uri$Builder", "Uri;->", "HttpUrl",
+        "Request$Builder", "Retrofit", "okhttp3", "HttpURLConnection",
+        ".append", "buildUpon",
+    )
+    # A fragment that plausibly belongs to a URL: a host-ish token, a path
+    # segment, a scheme, or a query piece.
+    _URL_FRAGMENT_RE = re.compile(
+        r"^(https?://|/|[A-Za-z0-9.-]+\.[A-Za-z]{2,}|[?&][\w%-]+=?)")
+    _HOSTISH_RE = re.compile(r"^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+    def _iter_method_string_consts(self):
+        """Yield (method, [string constants in its body]) for every method
+        that has bytecode. String literals are read from const-string
+        instruction operands, in textual order, so adjacent fragments that
+        are appended together stay adjacent."""
+        for method in self.dex.get_methods():
+            try:
+                code = method.get_code()
+                if code is None:
+                    continue
+            except Exception:
+                continue
+            consts, builderish = [], False
+            try:
+                for ins in method.get_instructions():
+                    name = ins.get_name()
+                    out = ins.get_output() or ""
+                    if name.startswith("const-string"):
+                        # operand text is rendered like: v3, 'fragment'
+                        m = re.search(r"'(.*)'\s*$", out)
+                        if m:
+                            consts.append(m.group(1))
+                    elif name.startswith("invoke"):
+                        if any(h in out for h in self._URL_BUILDER_HINTS):
+                            builderish = True
+            except Exception:
+                continue
+            if consts:
+                yield method, consts, builderish
+
+    def find_built_urls(self):
+        """Find URLs assembled at runtime from fragments (StringBuilder,
+        Uri.Builder, Retrofit/OkHttp), which http_strings cannot see.
+
+        Strategy (static, best-effort): within each method that invokes a
+        URL-builder API, concatenate its string-constant fragments in
+        order and also pair scheme/host fragments with following path
+        fragments. Returns candidate URLs plus the looser host+path joins,
+        de-duplicated.
+
+        These are CANDIDATES: static fragment-stitching cannot know the
+        real runtime concatenation order or values supplied by variables,
+        so treat results as "this method assembles a URL towards this
+        host/path", not as a verified endpoint.
+        """
+        candidates = set()
+        for method, consts, builderish in self._iter_method_string_consts():
+            # whole-literal URLs caught here too (cheap), but the value is
+            # in the builder case
+            joined = "".join(consts)
+            for u in re.findall(r"https?://[^\s\"'<>]+", joined):
+                candidates.add(u)
+
+            if not builderish:
+                continue
+
+            # stitch a scheme/host fragment to subsequent path/query frags
+            base = None
+            for frag in consts:
+                if frag.startswith("http://") or frag.startswith("https://"):
+                    base = frag.rstrip("/")
+                elif self._HOSTISH_RE.match(frag):
+                    base = "https://" + frag.rstrip("/")
+                elif base and self._URL_FRAGMENT_RE.match(frag):
+                    sep = "" if frag.startswith(("/", "?", "&")) else "/"
+                    candidates.add(base + sep + frag.lstrip())
+                    # keep extending the same base for further path parts
+                    if frag.startswith("/"):
+                        base = base + frag.rstrip("/")
+        return sorted(candidates)
+
+    def all_urls(self):
+        """Union of literal URLs (http_strings) and runtime-assembled URL
+        candidates (find_built_urls). The practical entry point for URL
+        extraction across both styles."""
+        return sorted(set(self.http_strings()) | set(self.find_built_urls()))
+
     def methods(self):
         return [method.get_name() for method in self.dex.get_methods()]
 
