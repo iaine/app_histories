@@ -160,3 +160,31 @@ def test_cli_registration_and_json_naming():
     assert "listening" in TASKS
     names = make_output_names([Path("/x/MyApp.apk")], "listening")
     assert list(names.values()) == ["MyApp.listening.json"]
+
+
+# --- DEX endpoint extraction ported from flows -----------------------
+def test_listening_captures_dex_audio_endpoints():
+    """Audio backends in DEX (transcription upload, streaming) must
+    appear, noise filtered, tagged audio_related."""
+    files = [(STT_CAPTURE[0], STT_CAPTURE[1])]
+    dex_urls = ["https://api.plaud.ai/v1/transcribe/upload",
+                "https://api.plaud.ai/v1/user/profile",
+                "https://stream.plaud.ai/live/session",
+                "https://doh.opendns.com/dns-query",
+                "https://app-measurement.com/a"]
+    r = trace_listening(files, permissions=PERMS, dex_urls=dex_urls)
+    eps = {e["target"]: e for e in r["chain"] if e.get("kind") == "endpoint"}
+    assert "api.plaud.ai/v1/transcribe/upload" in eps
+    assert eps["api.plaud.ai/v1/transcribe/upload"]["audio_related"]
+    assert not eps["api.plaud.ai/v1/user/profile"]["audio_related"]
+    # noise gone
+    assert not any("dns-query" in t or "measurement" in t for t in eps)
+    assert r["summary"]["endpoints_from_dex"] == 3
+    assert "api.plaud.ai/v1/transcribe/upload" in r["summary"]["audio_endpoints"]
+
+
+def test_listening_dex_endpoints_have_source_layer():
+    r = trace_listening([], permissions=PERMS,
+                        dex_urls=["https://api.x.com/v1/asr/stream"])
+    eps = [e for e in r["chain"] if e.get("kind") == "endpoint"]
+    assert eps and eps[0]["source_layer"] == "dex"

@@ -308,7 +308,9 @@ def task_listening(apk_path, options=None):
 
     apk, files, source_info = _collect_all_files(apk_path)
 
-    result = trace_listening(files, permissions=apk.get_permissions())
+    dex_urls = _extract_dex_urls(apk)
+    result = trace_listening(files, permissions=apk.get_permissions(),
+                             dex_urls=dex_urls)
     result["summary"] = {**result.get("summary", {}), **source_info}
     rec = dict(base_record(apk_path, "listening"),
                app={"pkg": apk.get_package(),

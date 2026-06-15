@@ -38,8 +38,15 @@ from ..classify.classify_url import ClassifyURL
 from ..classify.classify_model import ClassifyModel
 from .multimodal_pipeline import (
     INPUT_SIGNATURES, MODEL_EXTENSIONS, make_text_views, find_evidence,
-    looks_like_model,
+    looks_like_model, is_noise_endpoint,
 )
+
+# Path/host hints that an endpoint is audio-related (upload of recordings,
+# streaming, transcription, recommendation). Used only to TAG dex endpoints
+# audio_related=True/False, not to drop them.
+AUDIO_ENDPOINT_HINT = re.compile(
+    r"(audio|voice|speech|asr|tts|transcri|stream|hls|rtmp|dash|"
+    r"recommend|playlist|track|listen|sound|record|upload)", re.I)
 
 # ---------------------------------------------------------------------------
 # Audio sources: the inputs this workflow traces (subset of the flow
@@ -202,11 +209,16 @@ def parameter_transitions(chain):
     return transitions
 
 
-def trace_listening(files, permissions=None):
+def trace_listening(files, permissions=None, dex_urls=None):
     """Trace audio inputs, parameters, and outputs for one app.
 
     :param files: iterable of (name, bytes) -- native libs and assets
     :param permissions: manifest permissions (corroboration only)
+    :param dex_urls: optional URL strings from the app's DEX (Java/Kotlin)
+        code. Audio upload/streaming/transcription backends typically live
+        here, not in native libraries, so without this a recorder or music
+        app shows no endpoints. Library boilerplate is filtered; each
+        endpoint is tagged audio_related.
     :returns: dict -- sources, chain, parameter_transitions, summary
     """
     permissions = set(permissions or [])
@@ -267,14 +279,43 @@ def trace_listening(files, permissions=None):
                 entry["task"] = infer_task(ascii_text, i18n_text)
             chain.append(entry)
 
-        # onward: endpoints reachable from this audio module
+        # onward: endpoints reachable from this audio module (native strings)
         for url_info in curl.find_urls_with_analysis(strings):
+            target = url_info["domain"] + url_info["template"]
+            if is_noise_endpoint(target):
+                continue
             endpoints.append({
                 "stage": "output",
                 "module": name,
                 "kind": "endpoint",
-                "target": url_info["domain"] + url_info["template"],
+                "source_layer": "native",
+                "target": target,
                 "categories": url_info["categories"],
+                "audio_related": bool(AUDIO_ENDPOINT_HINT.search(target)),
+            })
+
+    # onward (dex): audio backends live in Java/Kotlin, not native libs.
+    # Filter library boilerplate (DoH, analytics, schema URLs) and tag
+    # whether each endpoint looks audio-related so a transcription/upload
+    # host stands out from a generic telemetry call.
+    if dex_urls:
+        seen_dex = set()
+        for url in dex_urls:
+            dom = curl.get_domain_safe(url)
+            if not dom or is_noise_endpoint(url):
+                continue
+            target = dom + curl.generate_template(url)
+            if target in seen_dex or is_noise_endpoint(target):
+                continue
+            seen_dex.add(target)
+            endpoints.append({
+                "stage": "output",
+                "module": "app_code",
+                "kind": "endpoint",
+                "source_layer": "dex",
+                "target": target,
+                "categories": curl.classify_url(url),
+                "audio_related": bool(AUDIO_ENDPOINT_HINT.search(url)),
             })
 
     # audio models referenced by name from an audio module's strings
@@ -325,6 +366,10 @@ def trace_listening(files, permissions=None):
             "inference_tasks": sorted({e["task"] for e in chain
                                        if e["stage"] == "inference"}),
             "endpoints": sorted({e["target"] for e in endpoints})[:20],
+            "audio_endpoints": sorted({e["target"] for e in endpoints
+                                       if e.get("audio_related")})[:20],
+            "endpoints_from_dex": sum(1 for e in endpoints
+                                      if e.get("source_layer") == "dex"),
             "audio_modules": len(module_views),
         },
     }

@@ -182,14 +182,21 @@ MIN_LINK_SCORE = 2   # one generic keyword alone never creates a link
 # under hundreds of library constants (TikTok showed 1500+ DoH URLs).
 _ENDPOINT_NOISE = re.compile(
     r"(dns-query|/dns\b|doh[-.]|\bdoh\b|resolver|"
-    r"w3\.org|schemas?\.|xmlns|example\.(com|org)|"
+    r"w3\.org|schemas?\.|xmlns|"
     r"localhost|127\.0\.0\.1|0\.0\.0\.0|"
     r"\.google-analytics\.|googletagmanager|doubleclick|app-measurement|"
     r"firebaseinstallations|firebaseremoteconfig|googleapis\.com/auth|"
     r"crashlytics|sentry\.io|bugsnag|/\.well-known/)", re.I)
 
 
+# Bare documentation/placeholder hosts (only noise without a real API path)
+_BARE_EXAMPLE = re.compile(r"^https?://(www\.)?example\.(com|org)/?$", re.I)
+
+
 def is_noise_endpoint(host_and_path):
+    if _BARE_EXAMPLE.match(host_and_path.rstrip("/") + "/"
+                           if "://" in host_and_path else host_and_path):
+        return True
     return bool(_ENDPOINT_NOISE.search(host_and_path))
 
 
