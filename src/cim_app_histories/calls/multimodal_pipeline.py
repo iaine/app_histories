@@ -140,7 +140,29 @@ OUTPUT_SIGNATURES = {
 
 MODEL_EXTENSIONS = (".tflite", ".lite", ".onnx", ".pt", ".ptl", ".pb",
                     ".mnn", ".param", ".nb", ".ms", ".om", ".bytenn",
-                    ".model", ".dat")
+                    ".model", ".dat", ".caffemodel", ".gguf", ".ggml",
+                    ".rknn", ".ncnn", ".pdmodel", ".pdiparams", ".safetensors",
+                    ".weights", ".ckpt", ".pkl", ".npz", ".spm", ".vocab")
+
+# Name hints that make an ambiguous ".bin" / no-extension asset a model.
+_MODEL_NAME_HINT = re.compile(
+    r"(model|weight|\bnet\b|tflite|onnx|ggml|gguf|ncnn|mnn|paddle|"
+    r"tensor|infer|embed|encoder|decoder|vocab|token|asr|tts|nlp|bert|"
+    r"detect|classif|recogni|face|voice|speech)", re.I)
+
+
+def looks_like_model(name):
+    """True if a file is a model asset by extension, or an under-assets
+    .bin/.dat/extension-less file whose name hints at a model. The old
+    fixed-extension list missed .bin-packaged models (ggml/ncnn/llama)
+    that are extremely common, leaving real models undetected."""
+    low = name.lower()
+    if low.endswith(MODEL_EXTENSIONS):
+        return True
+    if ("assets/" in low or "/ml/" in low or "model" in low):
+        if low.endswith((".bin", ".data", ".pb.bin")) or "." not in name.rsplit("/", 1)[-1]:
+            return bool(_MODEL_NAME_HINT.search(low))
+    return False
 
 MIN_LINK_SCORE = 2   # one generic keyword alone never creates a link
 
@@ -258,7 +280,7 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
 
     modules, models = [], []
     for name, data in files:
-        if name.lower().endswith(MODEL_EXTENSIONS):
+        if looks_like_model(name):
             models.append((name, data))
         elif name.endswith(".so"):
             modules.append((name, data))
@@ -311,25 +333,43 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
                               "kind": "produces", "score": len(hits),
                               "evidence": {"keywords": hits}})
 
-    # ---- module -> model links: the model's basename must appear in the
-    # module's own strings (co-location evidence, not directory guessing)
+    # ---- module -> model links: graduated co-location evidence.
+    # Real apps rarely embed a model's exact stem in a library's strings:
+    # filenames carry version/quantisation suffixes (ggml_model_q4 vs the
+    # referenced ggml_model), models are loaded from Java, or referenced by
+    # directory. So match in descending strength and record which rule
+    # fired, instead of requiring the full stem verbatim (which silently
+    # left almost every real model unlinked).
     with profiler.stage("model_links"):
         for mname, mdata in models:
-            base = mname.rsplit("/", 1)[-1].lower()
-            stem = base.rsplit(".", 1)[0]
-            referenced_by = [n for n, (_, a, i, _) in module_views.items()
-                             if (len(stem) >= 4 and (stem in a or stem in i))
-                             or base in a or base in i]
-            context = " ".join(
-                module_views[r][1]
-                for r in referenced_by) if referenced_by else ""
+            base = mname.rsplit("/", 1)[-1].lower()           # voice_v2.tflite
+            stem = base.rsplit(".", 1)[0]                      # voice_v2
+            # significant tokens from the stem (drop version/quant noise)
+            tokens = [t for t in re.split(r"[^a-z0-9]+", stem)
+                      if len(t) >= 4 and not re.fullmatch(r"v?\d+|q\d+|fp\d+|int\d+", t)]
+
+            referenced_by = []          # list of (module, match_rule, score)
+            for n, (_, a, i, _) in module_views.items():
+                hay = a + " " + i
+                if base in hay:
+                    referenced_by.append((n, "filename", 3))
+                elif len(stem) >= 4 and stem in hay:
+                    referenced_by.append((n, "stem", 3))
+                else:
+                    hit = [t for t in tokens if t in hay]
+                    if hit:
+                        referenced_by.append((n, "token:" + ",".join(hit), 2))
+
+            context = " ".join(module_views[r][1] for r, _, _ in referenced_by) \
+                if referenced_by else " ".join(a for _, a, _, _ in module_views.values())
             info = cmodel.classify(mname, mdata, context_text=context)
             add_node(mname, kind="model", format=info["format"],
-                     modality=info["modality"], vendor=info["vendor"])
-            for ref in referenced_by:
+                     modality=info["modality"], vendor=info["vendor"],
+                     linked=bool(referenced_by))
+            for ref, rule, score in referenced_by:
                 links.append({"source": ref, "target": mname,
-                              "kind": "uses_model", "score": 2,
-                              "evidence": {"name_reference": stem}})
+                              "kind": "uses_model", "score": score,
+                              "evidence": {"name_reference": rule}})
 
     summary = {
         "inputs": sorted({l["source"] for l in links if l["kind"] == "feeds"}),
@@ -337,6 +377,9 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
         "models": len(models),
         "endpoints": sorted({l["target"] for l in links
                              if l["kind"] == "sends_to"})[:20],
+        "models_total": len(models),
+        "models_linked": sum(1 for n in nodes.values()
+                             if n.get("kind") == "model" and n.get("linked")),
         "method_traced": bool(traced),
     }
     return {"nodes": list(nodes.values()), "links": links, "summary": summary}

@@ -38,6 +38,7 @@ from ..classify.classify_url import ClassifyURL
 from ..classify.classify_model import ClassifyModel
 from .multimodal_pipeline import (
     INPUT_SIGNATURES, MODEL_EXTENSIONS, make_text_views, find_evidence,
+    looks_like_model,
 )
 
 # ---------------------------------------------------------------------------
@@ -213,7 +214,7 @@ def trace_listening(files, permissions=None):
 
     modules, models = [], []
     for name, data in files:
-        if name.lower().endswith(MODEL_EXTENSIONS):
+        if looks_like_model(name):
             models.append((name, data))
         elif name.endswith(".so"):
             modules.append((name, data))
@@ -278,10 +279,22 @@ def trace_listening(files, permissions=None):
 
     # audio models referenced by name from an audio module's strings
     for mname, mdata in models:
-        stem = mname.rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
+        base = mname.rsplit("/", 1)[-1].lower()
+        stem = base.rsplit(".", 1)[0]
+        toks = [t for t in re.split(r"[^a-z0-9]+", stem)
+                if len(t) >= 4 and not re.fullmatch(r"v?\d+|q\d+|fp\d+|int\d+", t)]
         refs = [n for n, (a, i) in module_views.items()
-                if len(stem) >= 4 and (stem in a or stem in i)]
+                if base in (a + i) or (len(stem) >= 4 and stem in (a + i))
+                or any(t in (a + i) for t in toks)]
         if not refs:
+            # unreferenced audio model: still record it as an inference node
+            # so the chain shows the model exists, just unlinked
+            info = cmodel.classify(mname, mdata)
+            if info["modality"] in ("audio", "unknown"):
+                chain.append({"stage": "inference", "model": mname,
+                              "format": info["format"], "vendor": info["vendor"],
+                              "referenced_by": [], "linked": False,
+                              "task": "audio_processing"})
             continue
         context = " ".join(module_views[r][0] for r in refs)
         info = cmodel.classify(mname, mdata, context_text=context)

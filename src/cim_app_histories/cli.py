@@ -159,6 +159,17 @@ def task_classify(apk_path, options=None):
 
 
 
+def _collect_apk_files(apk):
+    """Native libs + model assets from an APK, using the shared
+    model-detection heuristic so .bin/ggml/ncnn models are included."""
+    from .calls.multimodal_pipeline import looks_like_model
+    out = []
+    for f in apk.get_files():
+        if f.endswith(".so") or looks_like_model(f):
+            out.append((f, apk.get_file(f)))
+    return out
+
+
 def task_flows(apk_path, options=None):
     """Trace inputs -> modules (libs/models) -> onward processes for one
     APK and return the flow graph. Pure data out; chains never emitted."""
@@ -174,10 +185,7 @@ def task_flows(apk_path, options=None):
 
     apk = APK(str(apk_path))
 
-    files = [(f, apk.get_file(f)) for f in apk.get_files()
-             if f.endswith(".so") or f.lower().endswith(
-                 (".tflite", ".lite", ".onnx", ".pt", ".ptl", ".pb", ".mnn",
-                  ".param", ".nb", ".ms", ".om", ".bytenn", ".model", ".dat"))]
+    files = _collect_apk_files(apk)
     permissions = apk.get_permissions()
 
     dx = None
@@ -218,10 +226,7 @@ def task_listening(apk_path, options=None):
     from .calls.listening import trace_listening
 
     apk = APK(str(apk_path))
-    files = [(f, apk.get_file(f)) for f in apk.get_files()
-             if f.endswith(".so") or f.lower().endswith(
-                 (".tflite", ".lite", ".onnx", ".pt", ".ptl", ".pb", ".mnn",
-                  ".param", ".nb", ".ms", ".om", ".bytenn", ".model", ".dat"))]
+    files = _collect_apk_files(apk)
 
     result = trace_listening(files, permissions=apk.get_permissions())
     rec = dict(base_record(apk_path, "listening"),
