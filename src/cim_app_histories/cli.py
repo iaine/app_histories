@@ -230,6 +230,22 @@ def _collect_all_files(apk_path):
     return apk, files, info
 
 
+def _extract_dex_urls(apk):
+    """All http(s) URLs in the app's DEX string pools. Chat/streaming
+    backends are constants in Java/Kotlin, not native libraries, so this
+    is where an LLM client's or music app's real endpoints are found."""
+    import re as _re
+    urls = []
+    try:
+        for dex in apk.get_all_dex():
+            from androguard.core.dex import DEX
+            for sstr in DEX(dex).get_strings():
+                urls.extend(_re.findall(r"https?://[^\s\"'<>]+", str(sstr)))
+    except Exception:
+        pass
+    return urls
+
+
 def task_flows(apk_path, options=None):
     """Trace inputs -> modules (libs/models) -> onward processes for one
     APK and return the flow graph. Pure data out; chains never emitted."""
@@ -253,8 +269,9 @@ def task_flows(apk_path, options=None):
         from androguard.misc import AnalyzeAPK
         _, _, dx = AnalyzeAPK(str(apk_path))
 
+    dex_urls = _extract_dex_urls(apk)
     graph = build_flow_graph(files, permissions=permissions, dx=dx,
-                             profiler=profiler)
+                             profiler=profiler, dex_urls=dex_urls)
     rec = dict(base_record(apk_path, "flows"),
                graph=graph,
                sankey=to_sankey(graph),

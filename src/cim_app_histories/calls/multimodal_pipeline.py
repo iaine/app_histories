@@ -175,6 +175,23 @@ def looks_like_model(name):
 
 MIN_LINK_SCORE = 2   # one generic keyword alone never creates a link
 
+# Endpoint hosts that are bundled-library boilerplate, not the app's own
+# backend: DNS-over-HTTPS resolver lists, schema/spec URLs, ad/measurement
+# SDKs, and standards namespaces. Filtered out of "sends_to" links so a
+# real backend (api.deepseek.com, spclient.wg.spotify.com) is not buried
+# under hundreds of library constants (TikTok showed 1500+ DoH URLs).
+_ENDPOINT_NOISE = re.compile(
+    r"(dns-query|/dns\b|doh[-.]|\bdoh\b|resolver|"
+    r"w3\.org|schemas?\.|xmlns|example\.(com|org)|"
+    r"localhost|127\.0\.0\.1|0\.0\.0\.0|"
+    r"\.google-analytics\.|googletagmanager|doubleclick|app-measurement|"
+    r"firebaseinstallations|firebaseremoteconfig|googleapis\.com/auth|"
+    r"crashlytics|sentry\.io|bugsnag|/\.well-known/)", re.I)
+
+
+def is_noise_endpoint(host_and_path):
+    return bool(_ENDPOINT_NOISE.search(host_and_path))
+
 
 # ---------------------------------------------------------------------------
 # Text views over a binary
@@ -263,7 +280,7 @@ def trace_strengthens(traced, input_id, module_name, vendor):
 # Graph construction
 # ---------------------------------------------------------------------------
 def build_flow_graph(files, permissions=None, dx=None, config=None,
-                     profiler=None):
+                     profiler=None, dex_urls=None):
     """Build the input -> module -> onward graph for one app.
 
     :param files: iterable of (name, bytes) -- native libs and model assets
@@ -272,6 +289,10 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
     :param config: {"inputs": [...]} to restrict which inputs to look for
     :param profiler: optional StageProfiler; per-stage timing/memory is
         recorded under it (NullProfiler default: zero overhead)
+    :param dex_urls: optional list of URL strings extracted from the app's
+        DEX (Java/Kotlin) code. Most chat/streaming backends live here, not
+        in native libraries, so without this an LLM client or music app
+        shows no endpoints. Attributed to an "app_code" node.
     :returns: {"nodes": [...], "links": [...], "summary": {...}}
     """
     profiler = profiler or NullProfiler()
@@ -342,6 +363,31 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
                               "kind": "produces", "score": len(hits),
                               "evidence": {"keywords": hits}})
 
+    # ---- app (dex) -> endpoint links: chat/streaming backends live in
+    # Java/Kotlin, not native libs. Filter library boilerplate so the
+    # app's own backend is not buried under DoH/analytics/CDN constants.
+    with profiler.stage("dex_endpoints"):
+        if dex_urls:
+            app_node = "app_code"
+            seen_ep = set()
+            for url in dex_urls:
+                dom = curl.get_domain_safe(url)
+                if not dom:
+                    continue
+                tmpl = curl.generate_template(url)
+                endpoint = dom + tmpl
+                if endpoint in seen_ep or is_noise_endpoint(url) \
+                        or is_noise_endpoint(endpoint):
+                    continue
+                seen_ep.add(endpoint)
+                cats = curl.classify_url(url)
+                add_node(app_node, kind="module", category="app_code")
+                add_node(endpoint, kind="endpoint", categories=cats)
+                links.append({"source": app_node, "target": endpoint,
+                              "kind": "sends_to", "score": 1,
+                              "evidence": {"source_layer": "dex",
+                                           "url_categories": cats}})
+
     # ---- module -> model links: graduated co-location evidence.
     # Real apps rarely embed a model's exact stem in a library's strings:
     # filenames carry version/quantisation suffixes (ggml_model_q4 vs the
@@ -386,6 +432,8 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
         "models": len(models),
         "endpoints": sorted({l["target"] for l in links
                              if l["kind"] == "sends_to"})[:20],
+        "endpoints_from_dex": sum(1 for l in links if l["kind"] == "sends_to"
+                                  and l.get("evidence", {}).get("source_layer") == "dex"),
         "models_total": len(models),
         "models_linked": sum(1 for n in nodes.values()
                              if n.get("kind") == "model" and n.get("linked")),

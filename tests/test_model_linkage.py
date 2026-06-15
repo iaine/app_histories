@@ -67,3 +67,58 @@ def test_listening_records_unreferenced_audio_model():
     r = trace_listening(files, permissions=["android.permission.RECORD_AUDIO"])
     models = [e for e in r["chain"] if e.get("model")]
     assert any("whisper" in m["model"] for m in models)
+
+
+# --- split App Bundle handling (the real-corpus failure) -------------
+def test_boilerplate_models_filtered():
+    from cim_app_histories.calls.multimodal_pipeline import looks_like_model
+    assert not looks_like_model(
+        "assets/mlkit_barcode_models/barcode_ssd_mobilenet_v1.tflite")
+    assert not looks_like_model("assets/org/threeten/bp/TZDB.dat")
+    assert looks_like_model("assets/asr/encoder.tflite")  # real model still passes
+
+
+def test_split_apk_siblings_gathered(tmp_path):
+    import cim_app_histories.cli as cli
+    (tmp_path / "com.example.app.apk").write_bytes(b"x")
+    (tmp_path / "com.example.app.config.arm64_v8a.apk").write_bytes(b"x")
+    (tmp_path / "split_config.en.apk").write_bytes(b"x")
+    sibs = {s.name for s in cli._gather_split_apks(
+        str(tmp_path / "com.example.app.apk"))}
+    assert "com.example.app.config.arm64_v8a.apk" in sibs
+    assert "split_config.en.apk" in sibs
+
+
+# --- DEX URL extraction (chat/streaming backends live in Java, not .so) ---
+def test_dex_urls_produce_endpoints():
+    """A chat app with no native libs but DEX API URLs must still show
+    its backend endpoints (the DeepSeek/Spotify failure)."""
+    urls = ["https://api.deepseek.com/v1/chat/completions",
+            "https://chat.deepseek.com/api/v0/session"]
+    g = build_flow_graph([], permissions=["android.permission.INTERNET"],
+                         dex_urls=urls)
+    sends = [l for l in g["links"] if l["kind"] == "sends_to"]
+    targets = {l["target"] for l in sends}
+    assert "api.deepseek.com/v1/chat/completions" in targets
+    assert all(l["evidence"]["source_layer"] == "dex" for l in sends)
+    assert g["summary"]["endpoints_from_dex"] == 2
+
+
+def test_dex_endpoint_noise_filtered():
+    from cim_app_histories.calls.multimodal_pipeline import is_noise_endpoint
+    assert is_noise_endpoint("https://dns.google/dns-query")
+    assert is_noise_endpoint("https://www.w3.org/2000/svg")
+    assert is_noise_endpoint("https://app-measurement.com/a")
+    assert is_noise_endpoint("https://firebase-settings.crashlytics.com/x")
+    assert not is_noise_endpoint("https://api.deepseek.com/v1/chat")
+    assert not is_noise_endpoint("https://spclient.wg.spotify.com/melody")
+
+
+def test_dex_noise_excluded_from_graph():
+    urls = ["https://api.spotify.com/v1/me/player",
+            "https://doh.opendns.com/dns-query",      # noise
+            "https://app-measurement.com/a"]          # noise
+    g = build_flow_graph([], permissions=[], dex_urls=urls)
+    targets = {l["target"] for l in g["links"] if l["kind"] == "sends_to"}
+    assert "api.spotify.com/v1/me/player" in targets
+    assert not any("dns-query" in t or "measurement" in t for t in targets)
