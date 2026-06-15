@@ -79,11 +79,11 @@ def test_boilerplate_models_filtered():
 
 
 def test_split_apk_siblings_gathered(tmp_path):
-    import cim_app_histories.cli as cli
+    import cim_app_histories.analyse as an
     (tmp_path / "com.example.app.apk").write_bytes(b"x")
     (tmp_path / "com.example.app.config.arm64_v8a.apk").write_bytes(b"x")
     (tmp_path / "split_config.en.apk").write_bytes(b"x")
-    sibs = {s.name for s in cli._gather_split_apks(
+    sibs = {s.name for s in an.gather_split_apks(
         str(tmp_path / "com.example.app.apk"))}
     assert "com.example.app.config.arm64_v8a.apk" in sibs
     assert "split_config.en.apk" in sibs

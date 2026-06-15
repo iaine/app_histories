@@ -30,7 +30,7 @@ class extractAPK():
         '''
         Get intentions from manifest
         '''
-        return ";".join(self.apk.get_intent_filters()) 
+        return ";".join(self.apk.get_intents()) 
     
     def packagename (self):
         '''
@@ -117,26 +117,79 @@ class extractAPK():
 
     def get_locales(self):
         '''
-        Locale qualifiers found in resource paths, deduplicated.
+        Locale coverage of the app as (language, region, device) tuples,
+        deduplicated and sorted.
 
-        Parses the resource DIRECTORY segment (values-zh-rCN), not the
-        full path: splitting the whole path on "-" returned fragments
-        like "es/strings.xml" as a language.
+        Reads from resources.arsc first -- the authoritative locale list.
+        Modern APKs compile res/values-<locale>/ directories into the
+        arsc and do NOT list them as separate file entries, so scanning
+        apk.get_files() alone returns nothing for most real apps (this is
+        why TikTok et al. showed empty localisation). Falls back to
+        path-scanning when the arsc is unavailable.
         '''
         seen = set()
-        for file_name in self.apk.get_files():
-            if not (file_name.startswith("res/") or "/res/" in file_name):
-                continue
-            parts = file_name.split("/")
-            if len(parts) < 2:
-                continue
-            segment = parts[-2]
-            if self.ISO_LANG_RE.search("-" + segment.split("-", 1)[-1]
-                                       if "-" in segment else segment):
-                values = self.get_locale_values(segment)
-                if values[0]:
-                    seen.add(values)
+
+        # 1. authoritative: resources.arsc locale list (e.g. "en", "zh-CN",
+        #    "b+sr+Latn"). androguard returns these per package.
+        try:
+            arsc = self.apk.get_android_resources()
+            if arsc is not None:
+                for pkg in arsc.get_packages_names():
+                    for loc in arsc.get_locales(pkg):
+                        tup = self._parse_arsc_locale(loc)
+                        if tup and tup[0]:
+                            seen.add(tup)
+        except Exception:
+            pass
+
+        # 2. fallback: scan res/values-<qualifier>/ directory entries
+        if not seen:
+            for file_name in self.apk.get_files():
+                if not (file_name.startswith("res/") or "/res/" in file_name):
+                    continue
+                parts = file_name.split("/")
+                if len(parts) < 2:
+                    continue
+                segment = parts[-2]
+                if self.ISO_LANG_RE.search("-" + segment.split("-", 1)[-1]
+                                           if "-" in segment else segment):
+                    values = self.get_locale_values(segment)
+                    if values[0]:
+                        seen.add(values)
+
         return sorted(seen)
+
+    def _parse_arsc_locale(self, loc):
+        '''
+        Parse an ARSC locale string into (language, region, "").
+
+        Handles "" (default, skipped), "en", "en-US", "zh-CN", BCP-47
+        "b+sr+Latn"/"b+es+419", and the legacy "en-rUS" form androguard
+        sometimes emits. Device qualifier is always "" here (the arsc
+        separates locale from screen config).
+        '''
+        if not loc or loc in ("", "default"):
+            return None
+        loc = loc.strip().lstrip("-")
+
+        if loc.lower().startswith("b+"):
+            sub = loc.split("+")
+            lang = sub[1] if len(sub) > 1 else ""
+            region = ""
+            for part in sub[2:]:
+                if part.isdigit() or (len(part) == 2 and part.isupper()):
+                    region = part
+                    break
+            return (lang.lower(), region, "")
+
+        parts = re.split(r"[-_]", loc)
+        lang = parts[0].lower()
+        region = ""
+        if len(parts) > 1:
+            r = parts[1].lstrip("r")            # "rUS" legacy -> "US"
+            if r.isdigit() or r.isupper() or len(r) == 2:
+                region = r.upper() if not r.isdigit() else r
+        return (lang, region, "")
 
     def get_locale_values (self, segment):
         """
@@ -198,5 +251,3 @@ class extractAPK():
                 device.append(d)
 
         return "".join(device)
-
-

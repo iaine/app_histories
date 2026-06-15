@@ -2,7 +2,7 @@
 Metadata workflow: one compact record per APK.
 
 Collects app identity (name, package, versions), manifest surface
-(permissions, activities, intents), localisation coverage, and
+(permissions, activities), localisation coverage, and
 A/B-testing SDK presence -- the per-version observables that the
 app-histories method tracks across releases.
 
@@ -30,7 +30,6 @@ def extract_metadata(apkname):
         "android_name": a.android_version_name(),
         "permissions": a.permissions(),
         "activities": a.activities(),
-        "intents": "",
         "localisation": a.get_locales(),
     }
 
@@ -52,7 +51,7 @@ def extract_metadata(apkname):
 
 
 # Canonical CSV column order. One row per app; the categorical fields
-# (permissions, locales, SDKs, activities, intents) are flattened to
+# (permissions, locales, SDKs, activities) are flattened to
 # counts plus a ;-joined list, which keeps the table readable while
 # preserving the values. This ordering is the contract the metadata
 # viewer's CSV export mirrors, so both produce identical columns.

@@ -41,6 +41,9 @@ def dex_with(descriptors):
 
 
 class FakeAPK:
+    """Stands in for androguard's APK (assigned to extractAPK.apk), so it
+    exposes get_files() returning raw archive paths. extractAPK.get_locales()
+    processes those paths into (language, region, device) tuples."""
     def __init__(self, files):
         self._files = files
 
@@ -93,7 +96,7 @@ def test_locale_parsing_from_resource_paths():
         "res/mipmap-anydpi-v26/icon.xml",      # not a language
         "classes.dex",
     ])
-    locales = a.get_files()
+    locales = a.get_locales()
     assert ("zh", "CN", "") in locales
     assert ("es", "", "") in locales
     assert ("es", "419", "") in locales
@@ -106,7 +109,7 @@ def test_locale_full_path_not_split_as_language():
     """Regression guard: splitting the full path on '-' returned
     'es/strings.xml' as a language."""
     a = apk_with(["res/values-es/strings.xml"])
-    for lang, _, _ in a.get_files():
+    for lang, _, _ in a.get_locales():
         assert "/" not in lang
 
 
@@ -114,7 +117,7 @@ def test_locale_results_deduplicated():
     a = apk_with(["res/values-de/strings.xml",
                   "res/values-de/colors.xml",
                   "res/values-de/dimens.xml"])
-    assert a.get_files() == [("de", "", "")]
+    assert a.get_locales() == [("de", "", "")]
 
 
 def test_extract_country_validates_regions():
@@ -140,8 +143,7 @@ def test_extract_metadata_record(monkeypatch):
         def android_version_name(self): return "1.2.3"
         def permissions(self): return "android.permission.CAMERA"
         def activities(self): return "com.example.Main"
-        def intents(self): return "android.intent.action.MAIN"
-        def get_files(self): return [("es", "", "")]
+        def get_locales(self): return [("es", "", "")]
         def get_all_dex(self):           # two dex files: multidex merge
             yield b"dex1"; yield b"dex2"
 
@@ -167,3 +169,45 @@ def test_cli_has_metadata_and_not_ab_localisation():
     from cim_app_histories.cli import TASKS
     assert "metadata" in TASKS
     assert "ab" not in TASKS and "localisation" not in TASKS
+
+
+# --- locales from resources.arsc (the TikTok empty-localisation fix) -------
+def test_locales_read_from_arsc_when_no_res_paths():
+    """Modern APKs compile res/values-*/ into resources.arsc and list no
+    res/values-* file entries; locales must come from the arsc."""
+    from cim_app_histories.apk.apk import extractAPK
+
+    class FakeARSC:
+        def get_packages_names(self): return ["com.app"]
+        def get_locales(self, pkg):
+            return ["", "en", "en-US", "zh-CN", "b+es+419", "de-rDE"]
+
+    class ArscAPK:
+        def get_android_resources(self): return FakeARSC()
+        def get_files(self): return ["resources.arsc", "classes.dex"]
+
+    a = extractAPK.__new__(extractAPK); a.apk = ArscAPK()
+    locs = a.get_locales()
+    assert ("zh", "CN", "") in locs
+    assert ("en", "US", "") in locs
+    assert ("es", "419", "") in locs        # BCP-47 numeric region
+    assert ("de", "DE", "") in locs         # legacy -rDE form
+    assert all(l for l, _, _ in locs)       # no empty/default language
+
+
+def test_locales_fallback_to_paths_without_arsc():
+    from cim_app_histories.apk.apk import extractAPK
+
+    class NoArscAPK:
+        def get_android_resources(self): return None
+        def get_files(self): return ["res/values-pt/strings.xml"]
+
+    a = extractAPK.__new__(extractAPK); a.apk = NoArscAPK()
+    assert ("pt", "", "") in a.get_locales()
+
+
+def test_metadata_record_has_no_intents():
+    """intents was removed from the metadata record."""
+    import inspect
+    from cim_app_histories.calls import metadata as md
+    assert "intents" not in inspect.getsource(md.extract_metadata)
