@@ -127,6 +127,8 @@ def analyse_flows(apk_path, dx=None, config=None, profiler=None):
                              profiler=profiler)
     graph["summary"] = {**graph["summary"], **info}
     graph["sankey"] = to_sankey(graph)
+    graph["app"] = {"pkg": apk.get_package(),
+                     "version": apk.get_androidversion_name()}
     if info["incomplete_base_apk"]:
         graph["warning"] = ("no native libraries found; likely a split App "
                             "Bundle base APK. Provide the universal APK or "
