@@ -160,56 +160,72 @@ function renderStaged(m,mount){
   const bs=[...model.buckets.values()];
   if(!bs.length){mount.innerHTML='<p class="empty">No chain entries to show (try re-enabling modalities).</p>';return;}
 
-  // only stages that are actually present get a column
+  // Only stages actually present get a column.
   const stages=model.stagesPresent;
-  const names=bs.map(b=>b.modality+"|"+b.stage);
-  const index=new Map(names.map((n,i)=>[n,i]));
-  const nodes=bs.map(b=>({name:label(b),bucket:b,
-                          depth:stages.indexOf(b.stage)}));
-  const links=model.links.filter(l=>index.has(l.source)&&index.has(l.target))
-    .map(l=>({source:index.get(l.source),target:index.get(l.target),
-              value:l.value,modality:l.modality}));
-
   const width=Math.min(1000,document.querySelector("main").clientWidth);
-  const rows=Math.max(...stages.map(s=>bs.filter(b=>b.stage===s).length),1);
-  const height=Math.max(240,rows*46+60);
-  const top=26;
-  const svg=d3.select(mount).append("svg")
-    .attr("viewBox",`0 0 ${width} ${height}`);
+  const top=30, padY=10, nodeW=15, gapY=9;
+  const colW=(width-nodeW)/Math.max(1,stages.length-1||1);
+  const colX=i=>stages.length===1?(width-nodeW)/2:i*colW;
 
-  let g;
-  try{
-    const sk=d3.sankey().nodeWidth(14).nodePadding(16)
-      .nodeAlign(d=>d.depth)                       // column = stage
-      .extent([[8,top+8],[width-8,height-8]]);
-    g=sk({nodes:nodes.map(d=>({...d})),links:links.map(d=>({...d}))});
-  }catch(err){
-    mount.innerHTML='<p class="empty">Could not lay out this graph: '+err.message+'</p>';
-    return;
-  }
+  // Stack nodes inside their OWN stage column. We lay this out ourselves
+  // rather than using d3-sankey's automatic depths: sankey packs a node
+  // into the earliest column its links allow, so a modality that skips a
+  // stage (location has no inference) slides left, and a modality with a
+  // single unlinked node (network has only output) lands in column 0 —
+  // next to the inputs. Explicit columns keep every block under its real
+  // stage heading.
+  const byStage={};
+  for(const b of bs) (byStage[b.stage]=byStage[b.stage]||[]).push(b);
+  for(const k in byStage) byStage[k].sort((a,z)=>a.modality.localeCompare(z.modality));
 
-  // stage column headers, only for present stages
-  const xs={};
-  g.nodes.forEach(n=>{ (xs[n.bucket.stage]=xs[n.bucket.stage]||[]).push((n.x0+n.x1)/2); });
+  const maxRows=Math.max(...stages.map(s=>byStage[s].length),1);
+  const rowH=34, height=Math.max(220, top+padY*2+maxRows*(rowH+gapY));
+
+  // scale block height by module count (evidence weight), floor for reading
+  const maxMods=Math.max(1,...bs.map(b=>b.modules.size||1));
+  const hOf=b=>Math.max(12, Math.min(rowH, 12+(rowH-12)*((b.modules.size||1)/maxMods)));
+
+  const pos=new Map();     // key -> {x,y,h}
+  stages.forEach((st,i)=>{
+    let y=top+padY;
+    for(const b of byStage[st]){
+      const h=hOf(b);
+      pos.set(b.modality+"|"+b.stage,{x:colX(i),y,h,b});
+      y+=h+gapY;
+    }
+  });
+
+  const svg=d3.select(mount).append("svg").attr("viewBox",`0 0 ${width} ${height}`);
+
+  // stage column headings
   svg.append("g").selectAll("text").data(stages).join("text")
-    .attr("class","stagehdr")
-    .attr("x",s=>d3.mean(xs[s]||[width/2]))
-    .attr("y",top-8).attr("text-anchor","middle").text(s=>s);
+    .attr("class","stagehdr").attr("x",(s,i)=>colX(i)+nodeW/2)
+    .attr("y",top-10).attr("text-anchor",(s,i)=>i===0?"start":(i===stages.length-1?"end":"middle"))
+    .text(s=>s);
 
-  svg.append("g").selectAll("path").data(g.links).join("path")
-    .attr("class","link").attr("d",d3.sankeyLinkHorizontal())
-    .attr("stroke",d=>colourFor(d.modality))
-    .attr("stroke-width",d=>Math.max(1.5,d.width))
-    .append("title").text(d=>`${d.source.name} → ${d.target.name}`);
+  // links: curved ribbons between consecutive present stages of a modality
+  const link=d3.linkHorizontal().x(d=>d[0]).y(d=>d[1]);
+  svg.append("g").selectAll("path").data(model.links).join("path")
+    .attr("class","link")
+    .attr("d",l=>{
+      const a=pos.get(l.source), z=pos.get(l.target);
+      if(!a||!z) return null;
+      return link({source:[a.x+nodeW,a.y+a.h/2],target:[z.x,z.y+z.h/2]});
+    })
+    .attr("stroke",l=>colourFor(l.modality))
+    .attr("stroke-width",l=>{
+      const a=pos.get(l.source),z=pos.get(l.target);
+      return Math.max(1.5,Math.min(a?a.h:2,z?z.h:2)*0.6);
+    })
+    .append("title").text(l=>`${l.modality}: ${l.source.split("|")[1]} → ${l.target.split("|")[1]}`);
 
-  const node=svg.append("g").selectAll("g").data(g.nodes).join("g").attr("class","node");
-  node.append("rect")
-    .attr("x",d=>d.x0).attr("y",d=>d.y0)
-    .attr("width",d=>d.x1-d.x0).attr("height",d=>Math.max(2,d.y1-d.y0))
-    .attr("fill",d=>colourFor(d.bucket.modality))
+  // blocks
+  const g=svg.append("g").selectAll("g").data([...pos.values()]).join("g").attr("class","node");
+  g.append("rect").attr("x",d=>d.x).attr("y",d=>d.y)
+    .attr("width",nodeW).attr("height",d=>d.h).attr("rx",2)
+    .attr("fill",d=>colourFor(d.b.modality))
     .append("title").text(d=>{
-      const b=d.bucket, L=[];
-      L.push(`${b.modality} · ${b.stage}`);
+      const b=d.b, L=[`${b.modality} · ${b.stage}`];
       if(b.modules.size) L.push(`${b.modules.size} module(s)`);
       if(b.ops.size) L.push("ops: "+[...b.ops].slice(0,8).join(", "));
       if(b.models.size) L.push("models: "+[...b.models].slice(0,4).map(s=>s.split("/").pop()).join(", "));
@@ -219,11 +235,11 @@ function renderStaged(m,mount){
       if(ps.length) L.push(ps.join("  "));
       return L.join("\n");
     });
-  node.append("text")
-    .attr("x",d=>d.x0<width/2?d.x1+5:d.x0-5)
-    .attr("y",d=>(d.y0+d.y1)/2).attr("dy","0.35em")
-    .attr("text-anchor",d=>d.x0<width/2?"start":"end")
-    .text(d=>d.name.length>30?d.name.slice(0,28)+"…":d.name);
+  g.append("text")
+    .attr("x",d=>d.x+nodeW+4).attr("y",d=>d.y+d.h/2).attr("dy","0.35em")
+    .text(d=>`${d.b.modality}${d.b.modules.size?" ("+d.b.modules.size+")":""}`)
+    .attr("fill",d=>colourFor(d.b.modality))
+    .style("font-size","10px");
 
   // parameter transitions, coloured by modality
   if(m.transitions.length){
@@ -235,6 +251,10 @@ function renderStaged(m,mount){
       `${JSON.stringify(x.to)} <span style="opacity:.6">(${x.from_stage}→${x.to_stage})</span></span>`
     ).join(""));
   }
+  d3.select(mount).append("p").attr("class","note").text(
+    "Columns are stages; a modality that does not use a stage has no block "+
+    "in that column. Block height reflects how many native libraries carry "+
+    "that stage. Colour is the modality.");
 }
 
 // ---------- detail table ----------
