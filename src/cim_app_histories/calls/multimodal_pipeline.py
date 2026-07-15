@@ -46,6 +46,9 @@ from ..classify.classify_so import ClassifySO
 from ..classify.classify_url import ClassifyURL
 from ..classify.classify_model import ClassifyModel
 from ..general.perf import NullProfiler
+from .stages import (STAGE_ORDER, MODALITY_STAGES, INPUT_MODALITY,
+                     extract_parameters, extract_parameters_by_stage,
+                     detect_stages, parameter_transitions, canonical_modality)
 
 # ---------------------------------------------------------------------------
 # Input signature tables (data, not code: extend keywords/languages here)
@@ -311,6 +314,7 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
         traced = trace_input_apis(dx) if dx is not None else {}
 
     nodes, links = {}, []
+    chain = []          # staged, per-modality processing entries
 
     def add_node(node_id, **attrs):
         nodes.setdefault(node_id, {"id": node_id, **attrs})
@@ -332,6 +336,32 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
         module_views[name] = (strings, ascii_text, i18n_text, vendor)
         add_node(name, kind="module", category=category, vendor=vendor)
 
+        # ---- staged chain entries, one per (modality, stage) this module
+        # participates in. Stage OPERATIONS are recorded as data on the
+        # entry rather than as graph nodes, so the chain stays readable
+        # (capture -> preprocess -> features -> inference -> output) and
+        # does not explode into a node per method.
+        with profiler.stage("stage_detection"):
+            for modality in MODALITY_STAGES:
+                mod_stages = detect_stages(ascii_text, i18n_text, modality)
+                if not mod_stages:
+                    continue
+                # require more than a single incidental keyword hit
+                if sum(len(v) for v in mod_stages.values()) < 2:
+                    continue
+                stage_params = extract_parameters_by_stage(
+                    ascii_text, modality, mod_stages)
+                for stage in STAGE_ORDER:
+                    if stage not in mod_stages:
+                        continue
+                    entry = {"modality": modality, "stage": stage,
+                             "module": name, "vendor": vendor,
+                             "operations": mod_stages[stage]}
+                    params = stage_params.get(stage)
+                    if params and stage != "output":
+                        entry["parameters"] = params
+                    chain.append(entry)
+
         # ---- input -> module links (evidence-gated)
         with profiler.stage("input_links"):
             for input_id in wanted:
@@ -344,8 +374,11 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
                     score += 2
                     ev["method_trace"] = trace  # api + depth only, no chain
                 if score >= MIN_LINK_SCORE:
-                    add_node(input_id, kind="input")
+                    add_node(input_id, kind="input",
+                             modality=INPUT_MODALITY.get(input_id, "unknown"))
                     links.append({"source": input_id, "target": name,
+                                  "modality": INPUT_MODALITY.get(input_id,
+                                                                 "unknown"),
                                   "kind": "feeds", "score": score,
                                   "evidence": ev})
 
@@ -359,6 +392,10 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
             links.append({"source": name, "target": endpoint,
                           "kind": "sends_to", "score": 1,
                           "evidence": {"url_categories": url_info["categories"]}})
+            chain.append({"modality": "network", "stage": "output",
+                          "module": name, "endpoint": endpoint,
+                          "source_layer": "native",
+                          "categories": url_info["categories"]})
 
         # ---- module -> output links (onward: produced data)
         for out_id, kws in OUTPUT_SIGNATURES.items():
@@ -394,6 +431,9 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
                               "kind": "sends_to", "score": 1,
                               "evidence": {"source_layer": "dex",
                                            "url_categories": cats}})
+                chain.append({"modality": "network", "stage": "output",
+                              "module": app_node, "endpoint": endpoint,
+                              "source_layer": "dex", "categories": cats})
 
     # ---- module -> model links: graduated co-location evidence.
     # Real apps rarely embed a model's exact stem in a library's strings:
@@ -425,13 +465,19 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
             context = " ".join(module_views[r][1] for r, _, _ in referenced_by) \
                 if referenced_by else " ".join(a for _, a, _, _ in module_views.values())
             info = cmodel.classify(mname, mdata, context_text=context)
+            model_modality = canonical_modality(info["modality"])
             add_node(mname, kind="model", format=info["format"],
-                     modality=info["modality"], vendor=info["vendor"],
+                     modality=model_modality, vendor=info["vendor"],
                      linked=bool(referenced_by))
             for ref, rule, score in referenced_by:
                 links.append({"source": ref, "target": mname,
                               "kind": "uses_model", "score": score,
                               "evidence": {"name_reference": rule}})
+            chain.append({"modality": model_modality, "stage": "inference",
+                          "model": mname, "format": info["format"],
+                          "vendor": info["vendor"],
+                          "referenced_by": [r for r, _, _ in referenced_by],
+                          "linked": bool(referenced_by)})
 
     summary = {
         "inputs": sorted({l["source"] for l in links if l["kind"] == "feeds"}),
@@ -445,8 +491,16 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
         "models_linked": sum(1 for n in nodes.values()
                              if n.get("kind") == "model" and n.get("linked")),
         "method_traced": bool(traced),
+        "modalities": sorted({e["modality"] for e in chain
+                              if e.get("modality") not in (None, "unknown")}),
+        "stages_present": sorted({e["stage"] for e in chain},
+                                 key=STAGE_ORDER.index),
     }
-    return {"nodes": list(nodes.values()), "links": links, "summary": summary}
+    chain.sort(key=lambda e: (e.get("modality") or "", STAGE_ORDER.index(e["stage"])))
+    return {"nodes": list(nodes.values()), "links": links,
+            "chain": chain,
+            "parameter_transitions": parameter_transitions(chain),
+            "summary": summary}
 
 
 # ---------------------------------------------------------------------------
