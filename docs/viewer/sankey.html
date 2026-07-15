@@ -7,45 +7,56 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-sankey/0.12.3/d3-sankey.min.js"></script>
 <style>
-  :root{--ink:#15140f;--paper:#f4f1e8;--line:#ccc5b0;
-    --capture:#2f6f6a;--dsp:#3a7d9c;--features:#5b6cb0;--inference:#8a4f9e;--output:#b5562f;
-    --input:#2f6f6a;--module:#5b6cb0;--model:#8a4f9e;--endpoint:#b5562f;
-    --added:#2f7d4f;--removed:#b5562f;--same:#9a927d;}
+  :root{
+    --ink:#15140f; --paper:#f4f1e8; --line:#ccc5b0; --card:#fbfaf5;
+    /* modality palette — colour carries the input type */
+    --audio:#2f6f6a; --video:#b5562f; --image:#c08a2e; --text:#5b6cb0;
+    --sensor:#7a8b3f; --location:#8a4f9e; --network:#3a7d9c; --vision:#a8452f;
+    --unknown:#9a927d;
+  }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);
     font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;}
-  header{padding:1.4rem 1.6rem 1rem;border-bottom:1px solid var(--line);}
-  h1{margin:0;font-size:1.45rem;font-weight:600;letter-spacing:-.01em;}
-  .sub{margin:.25rem 0 0;font-size:.9rem;opacity:.7;font-style:italic;}
-  main{padding:1.2rem 1.6rem 2.4rem;}
-  #drop{border:1.5px dashed var(--line);border-radius:6px;padding:2.4rem 1rem;
-    text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#fbfaf5;}
-  #drop.over{border-color:var(--inference);background:#f0ecdf;}
+  header{padding:1.3rem 1.6rem .9rem;border-bottom:1px solid var(--line);}
+  h1{margin:0;font-size:1.4rem;font-weight:600;letter-spacing:-.01em;}
+  .sub{margin:.25rem 0 0;font-size:.88rem;opacity:.7;font-style:italic;}
+  main{padding:1.1rem 1.6rem 2.4rem;}
+  #drop{border:1.5px dashed var(--line);border-radius:6px;padding:2.2rem 1rem;
+    text-align:center;cursor:pointer;background:var(--card);}
+  #drop.over{border-color:var(--audio);background:#f0ecdf;}
   #drop p{margin:.3rem 0;} .hint{font-size:.82rem;opacity:.6;}
-  .bar{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin:.4rem 0 1rem;}
+  .bar{display:flex;flex-wrap:wrap;gap:.9rem;align-items:center;margin:.5rem 0 .8rem;}
   .modes{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
-  .modes button{border:0;background:#fbfaf5;padding:.4rem .8rem;cursor:pointer;
-    font-family:inherit;font-size:.85rem;color:var(--ink);}
-  .modes button.on{background:var(--inference);color:#fff;}
+  .modes button{border:0;background:var(--card);padding:.38rem .75rem;cursor:pointer;
+    font-family:inherit;font-size:.84rem;color:var(--ink);}
+  .modes button.on{background:var(--ink);color:var(--paper);}
   .modes button:not(:last-child){border-right:1px solid var(--line);}
-  select,.reset{font-family:inherit;font-size:.85rem;padding:.35rem .5rem;
-    border:1px solid var(--line);border-radius:5px;background:#fbfaf5;color:var(--ink);cursor:pointer;}
+  .btn{font-family:inherit;font-size:.84rem;padding:.34rem .55rem;border:1px solid var(--line);
+    border-radius:5px;background:var(--card);color:var(--ink);cursor:pointer;}
+  .count{opacity:.6;font-size:.84rem;}
+  .app{font-weight:600;}
+  .filters{display:flex;flex-wrap:wrap;gap:.4rem;margin:.2rem 0 1rem;}
+  .chip{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .55rem;
+    border:1px solid var(--line);border-radius:14px;font-size:.8rem;cursor:pointer;
+    background:var(--card);user-select:none;}
+  .chip i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .chip.off{opacity:.35;text-decoration:line-through;}
   svg{width:100%;height:auto;display:block;}
-  .node rect{stroke:rgba(0,0,0,.18);} .node text{font-size:11px;fill:var(--ink);}
-  .link{fill:none;stroke-opacity:.34;} .link:hover{stroke-opacity:.62;}
-  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin:.5rem 0 1rem;font-size:.78rem;}
-  .legend span{display:inline-flex;align-items:center;gap:.35rem;}
-  .legend i{width:11px;height:11px;border-radius:2px;display:inline-block;}
-  table{border-collapse:collapse;width:100%;font-size:.84rem;margin-top:.4rem;}
-  th,td{border:1px solid var(--line);padding:.35rem .5rem;text-align:left;vertical-align:top;}
-  th{background:#ece7d8;font-weight:600;} td.app{font-weight:600;white-space:nowrap;}
-  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;}
-  .tag{display:inline-block;margin:1px 3px 1px 0;padding:.05rem .4rem;border-radius:10px;
-    font-size:.78rem;border:1px solid var(--line);background:#fbfaf5;}
-  .tag.added{border-color:var(--added);background:#eaf3ec;}
-  .tag.removed{border-color:var(--removed);background:#fbeae4;text-decoration:line-through;opacity:.8;}
-  h2{font-size:1.05rem;font-weight:600;margin:1.4rem 0 .4rem;}
-  .empty{opacity:.6;font-style:italic;} .count{opacity:.6;font-size:.85rem;}
+  .stagehdr{font-size:11px;fill:var(--ink);opacity:.75;font-weight:600;
+    text-transform:uppercase;letter-spacing:.06em;}
+  .node rect{stroke:rgba(0,0,0,.2);}
+  .node text{font-size:10.5px;fill:var(--ink);}
+  .link{fill:none;stroke-opacity:.3;}
+  .link:hover{stroke-opacity:.6;}
+  table{border-collapse:collapse;width:100%;font-size:.82rem;margin-top:.4rem;}
+  th,td{border:1px solid var(--line);padding:.32rem .5rem;text-align:left;vertical-align:top;}
+  th{background:#ece7d8;font-weight:600;}
+  td.mono{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;}
+  .tag{display:inline-block;margin:1px 3px 1px 0;padding:.04rem .38rem;border-radius:10px;
+    font-size:.76rem;border:1px solid var(--line);background:var(--card);}
+  h2{font-size:1rem;font-weight:600;margin:1.3rem 0 .4rem;}
+  .empty{opacity:.6;font-style:italic;}
+  .note{font-size:.78rem;opacity:.65;margin:.3rem 0 0;}
   footer{font-size:.76rem;opacity:.55;padding:0 1.6rem 1.4rem;}
   code{background:#e8e3d4;padding:.05rem .3rem;border-radius:3px;font-size:.82em;}
 </style>
@@ -53,232 +64,269 @@
 <body>
 <header>
   <h1>App Histories — flow viewer</h1>
-  <p class="sub">Sankey and corpus views for <code>flows</code> and <code>listening</code> output</p>
+  <p class="sub">Staged pipeline view of <code>flows</code> and <code>listening</code> output</p>
 </header>
 <main>
   <div id="drop">
     <p><b>Drop one or more JSON files here</b> or click to choose</p>
-    <p class="hint">one app = Sankey · many = version timeline or app comparison</p>
+    <p class="hint"><code>*.flows.jsonl</code> or <code>*.listening.json</code> — one app = pipeline, many = comparison</p>
     <input type="file" id="file" accept=".json,.jsonl" multiple hidden>
   </div>
   <div id="view" hidden>
     <div class="bar">
+      <span class="app" id="appname"></span>
       <div class="modes" id="modes"></div>
       <span class="count" id="count"></span>
       <span style="flex:1"></span>
-      <button class="reset" id="reset">Clear</button>
+      <button class="btn" id="reset">Clear</button>
     </div>
+    <div class="filters" id="filters"></div>
     <div id="panel"></div>
   </div>
 </main>
 <footer>
-  Static-analysis evidence: links and parameters are observed in binary
-  strings, not measured runtime dataflow. Audit a sample before reporting.
+  Static-analysis evidence: stages and parameters are vocabulary observed in
+  binary strings, not measured runtime dataflow. Stage attribution uses
+  proximity in the string table — treat as candidates to audit.
 </footer>
 <script>
-const STAGE_ORDER=["capture","dsp","features","inference","output"];
-const col=k=>getComputedStyle(document.documentElement).getPropertyValue("--"+k).trim()||"#777";
-let RECORDS=[]; let MODE="auto";
+const STAGE_ORDER=["capture","preprocess","features","inference","output"];
+const cvar=k=>getComputedStyle(document.documentElement).getPropertyValue("--"+k).trim();
+const colourFor=m=>cvar(m)||cvar("unknown");
+let RECORDS=[], MODE="auto", HIDDEN=new Set();
 
-// ---------- adapters to a common single-app model ----------
-function adaptFlows(rec){
-  const g=rec.graph||rec, counts=new Map(), titles=new Map(), kind={};
-  for(const n of g.nodes) kind[n.id]=n.kind;
-  for(const l of g.links){const k=l.source+"\u0000"+l.target;
-    counts.set(k,(counts.get(k)||0)+(l.score||1));
-    const ev=l.evidence||{}; titles.set(k,[l.kind,
-      (ev.keywords||[]).join(", "),(ev.apis||[]).join(", "),
-      (ev.url_categories||[]).join(", ")].filter(Boolean).join(" · "));}
-  const links=[...counts].map(([k,value])=>{const[source,target]=k.split("\u0000");
-    return{source,target,value,title:titles.get(k)};});
-  return label(rec,{nodeKind:kind,links,transitions:[],type:"flows"});
-}
-function adaptListening(rec){
-  const links=[],nodeKind={},short=m=>(m||"").split("/").pop();
-  const push=(s,t,v,title,sk,tk)=>{nodeKind[s]=sk;nodeKind[t]=tk;links.push({source:s,target:t,value:v,title});};
-  for(const[src,info]of Object.entries(rec.sources||{}))
-    for(const m of info.modules){const ev=(info.evidence&&info.evidence[m])||{};
-      push(src,short(m),2,(ev.keywords||[]).concat(ev.apis||[]).join(", "),"input","module");}
-  for(const e of rec.chain||[]){
-    if(e.module&&e.stage){const sn=e.stage+" ▸ "+short(e.module);
-      push(short(e.module),sn,2,(e.operations||[]).join(", "),"module",e.stage);
-      if(e.stage==="inference"&&e.task) push(sn,"task: "+e.task,2,"",e.stage,"output");}
-    if(e.model) for(const r of(e.referenced_by||[]))
-      push(short(r),short(e.model),2,(e.format||"")+" · "+(e.task||""),"module","model");
-    if(e.kind==="endpoint") push(short(e.module),e.target,2,(e.categories||[]).join(", "),"module","endpoint");}
-  return label(rec,{nodeKind,links,transitions:rec.parameter_transitions||[],type:"listening"});
-}
-function label(rec,m){
-  m.raw=rec;
-  m.pkg=rec.app?rec.app.pkg:(rec.input||"record");
-  m.version=rec.app?rec.app.version:(rec.toolkit_version||"");
-  m.summary=rec.summary||{};
-  return m;
-}
-function detect(rec){
-  if(rec.chain||rec.parameter_transitions) return adaptListening(rec);
-  if(rec.graph||rec.nodes) return adaptFlows(rec);
-  throw new Error("Unrecognised JSON: expected a flows or listening record.");
+// ---------- normalise a record ----------
+function norm(rec){
+  const chain=rec.chain||[];
+  const modalities=[...new Set(chain.map(e=>e.modality).filter(Boolean))].sort();
+  return {
+    raw:rec,
+    pkg:(rec.app&&rec.app.pkg)||rec.input||"app",
+    version:(rec.app&&rec.app.version)||"",
+    type:rec.analysis||(rec.chain?"flows":"unknown"),
+    chain, modalities,
+    transitions:rec.parameter_transitions||[],
+    summary:rec.summary||{},
+    graph:rec.graph||{nodes:[],links:[]},
+  };
 }
 
-// ---------- scenario inference ----------
-function scenario(models){
-  if(models.length<=1) return "single";
-  const pkgs=new Set(models.map(m=>m.pkg));
-  // one package, many versions -> timeline; else -> comparison
-  return pkgs.size===1?"versions":"apps";
-}
-function naturalVer(a,b){
-  const pa=(a.version||"").split(".").map(Number),pb=(b.version||"").split(".").map(Number);
-  for(let i=0;i<Math.max(pa.length,pb.length);i++){
-    if((pa[i]||0)!==(pb[i]||0)) return (pa[i]||0)-(pb[i]||0);}
-  return 0;
+// ---------- aggregate chain -> staged sankey ----------
+// Nodes are (modality, stage) buckets, NOT raw modules: TikTok has 4600
+// chain entries over 500 modules; plotting them raw is unreadable. Each
+// bucket carries its module count and operations for the tooltip.
+function stagedModel(m){
+  const buckets=new Map();   // key: modality|stage
+  const key=(mod,st)=>mod+"|"+st;
+  for(const e of m.chain){
+    if(HIDDEN.has(e.modality)) continue;
+    const st=e.stage; if(!STAGE_ORDER.includes(st)) continue;
+    const k=key(e.modality,st);
+    let b=buckets.get(k);
+    if(!b){b={modality:e.modality,stage:st,modules:new Set(),ops:new Set(),
+              models:new Set(),endpoints:new Set(),params:{}};buckets.set(k,b);}
+    if(e.module) b.modules.add(e.module);
+    (e.operations||[]).forEach(o=>b.ops.add(o));
+    if(e.model) b.models.add(e.model);
+    if(e.endpoint) b.endpoints.add(e.endpoint);
+    for(const [p,v] of Object.entries(e.parameters||{}))
+      (b.params[p]=b.params[p]||new Set()).add(...[].concat(v));
+  }
+  // links: consecutive NON-EMPTY stages within a modality (skip empties)
+  const links=[];
+  const byMod={};
+  for(const b of buckets.values()) (byMod[b.modality]=byMod[b.modality]||[]).push(b);
+  for(const [mod,list] of Object.entries(byMod)){
+    const present=STAGE_ORDER.filter(s=>list.some(b=>b.stage===s));
+    for(let i=0;i<present.length-1;i++){
+      const a=list.find(b=>b.stage===present[i]), z=list.find(b=>b.stage===present[i+1]);
+      // weight: how many modules carry through (min of the two ends)
+      const w=Math.max(1,Math.min(a.modules.size||1,z.modules.size||1));
+      links.push({source:mod+"|"+present[i],target:mod+"|"+present[i+1],
+                  value:w,modality:mod});
+    }
+  }
+  return {buckets,links,stagesPresent:STAGE_ORDER.filter(
+    s=>[...buckets.values()].some(b=>b.stage===s))};
 }
 
-// ---------- single-app Sankey ----------
-function renderSankey(model,mount){
-  if(!model.links.length){mount.innerHTML='<p class="empty">No links in this record.</p>';return;}
-  const names=[...new Set(model.links.flatMap(l=>[l.source,l.target]))];
-  const idx=new Map(names.map((n,i)=>[n,i]));
-  const nodes=names.map(n=>({name:n,kind:model.nodeKind[n]||"module"}));
-  const links=model.links.map(l=>({source:idx.get(l.source),target:idx.get(l.target),value:l.value,title:l.title}));
-  const width=Math.min(960,document.querySelector("main").clientWidth);
-  const height=Math.max(220,names.length*26);
-  const svg=d3.select(mount).append("svg").attr("viewBox",`0 0 ${width} ${height}`);
-  let g; try{ g=d3.sankey().nodeWidth(13).nodePadding(13)
-    .extent([[6,8],[width-6,height-8]])({nodes:nodes.map(d=>({...d})),links:links.map(d=>({...d}))});}
-  catch(e){mount.innerHTML='<p class="empty">Graph contains a cycle; layout skipped.</p>';return;}
-  svg.append("g").selectAll("path").data(g.links).join("path").attr("class","link")
-    .attr("d",d3.sankeyLinkHorizontal()).attr("stroke",d=>col(d.target.kind))
-    .attr("stroke-width",d=>Math.max(1,d.width))
-    .append("title").text(d=>`${d.source.name} → ${d.target.name}`+(d.title?`\n${d.title}`:``));
+function label(b){
+  const n=b.modules.size;
+  return b.modality+" · "+b.stage+(n?` (${n})`:"");
+}
+
+function renderStaged(m,mount){
+  const model=stagedModel(m);
+  const bs=[...model.buckets.values()];
+  if(!bs.length){mount.innerHTML='<p class="empty">No chain entries to show (try re-enabling modalities).</p>';return;}
+
+  // only stages that are actually present get a column
+  const stages=model.stagesPresent;
+  const names=bs.map(b=>b.modality+"|"+b.stage);
+  const index=new Map(names.map((n,i)=>[n,i]));
+  const nodes=bs.map(b=>({name:label(b),bucket:b,
+                          depth:stages.indexOf(b.stage)}));
+  const links=model.links.filter(l=>index.has(l.source)&&index.has(l.target))
+    .map(l=>({source:index.get(l.source),target:index.get(l.target),
+              value:l.value,modality:l.modality}));
+
+  const width=Math.min(1000,document.querySelector("main").clientWidth);
+  const rows=Math.max(...stages.map(s=>bs.filter(b=>b.stage===s).length),1);
+  const height=Math.max(240,rows*46+60);
+  const top=26;
+  const svg=d3.select(mount).append("svg")
+    .attr("viewBox",`0 0 ${width} ${height}`);
+
+  let g;
+  try{
+    const sk=d3.sankey().nodeWidth(14).nodePadding(16)
+      .nodeAlign(d=>d.depth)                       // column = stage
+      .extent([[8,top+8],[width-8,height-8]]);
+    g=sk({nodes:nodes.map(d=>({...d})),links:links.map(d=>({...d}))});
+  }catch(err){
+    mount.innerHTML='<p class="empty">Could not lay out this graph: '+err.message+'</p>';
+    return;
+  }
+
+  // stage column headers, only for present stages
+  const xs={};
+  g.nodes.forEach(n=>{ (xs[n.bucket.stage]=xs[n.bucket.stage]||[]).push((n.x0+n.x1)/2); });
+  svg.append("g").selectAll("text").data(stages).join("text")
+    .attr("class","stagehdr")
+    .attr("x",s=>d3.mean(xs[s]||[width/2]))
+    .attr("y",top-8).attr("text-anchor","middle").text(s=>s);
+
+  svg.append("g").selectAll("path").data(g.links).join("path")
+    .attr("class","link").attr("d",d3.sankeyLinkHorizontal())
+    .attr("stroke",d=>colourFor(d.modality))
+    .attr("stroke-width",d=>Math.max(1.5,d.width))
+    .append("title").text(d=>`${d.source.name} → ${d.target.name}`);
+
   const node=svg.append("g").selectAll("g").data(g.nodes).join("g").attr("class","node");
-  node.append("rect").attr("x",d=>d.x0).attr("y",d=>d.y0).attr("width",d=>d.x1-d.x0)
-    .attr("height",d=>Math.max(1,d.y1-d.y0)).attr("fill",d=>col(d.kind))
-    .append("title").text(d=>`${d.name} (${d.kind})`);
-  node.append("text").attr("x",d=>d.x0<width/2?d.x1+5:d.x0-5).attr("y",d=>(d.y0+d.y1)/2)
-    .attr("dy","0.35em").attr("text-anchor",d=>d.x0<width/2?"start":"end")
-    .text(d=>d.name.length>34?d.name.slice(0,32)+"…":d.name);
-  const kinds=[...new Set(nodes.map(n=>n.kind))]
-    .sort((a,b)=>(STAGE_ORDER.indexOf(a)+99)-(STAGE_ORDER.indexOf(b)+99));
-  d3.select(mount).append("div").attr("class","legend").html(
-    kinds.map(k=>`<span><i style="background:${col(k)}"></i>${k}</span>`).join(""));
-  if(model.transitions.length)
-    d3.select(mount).append("div").html("<h2>Parameter transitions</h2>"+
-      model.transitions.map(t=>`<span class="tag">${t.parameter}: `+
-      `${JSON.stringify(t.from)} → ${JSON.stringify(t.to)} `+
-      `<span style="opacity:.6">(${t.from_stage}→${t.to_stage})</span></span>`).join(""));
-}
+  node.append("rect")
+    .attr("x",d=>d.x0).attr("y",d=>d.y0)
+    .attr("width",d=>d.x1-d.x0).attr("height",d=>Math.max(2,d.y1-d.y0))
+    .attr("fill",d=>colourFor(d.bucket.modality))
+    .append("title").text(d=>{
+      const b=d.bucket, L=[];
+      L.push(`${b.modality} · ${b.stage}`);
+      if(b.modules.size) L.push(`${b.modules.size} module(s)`);
+      if(b.ops.size) L.push("ops: "+[...b.ops].slice(0,8).join(", "));
+      if(b.models.size) L.push("models: "+[...b.models].slice(0,4).map(s=>s.split("/").pop()).join(", "));
+      if(b.endpoints.size) L.push(`${b.endpoints.size} endpoint(s)`);
+      const ps=Object.entries(b.params).slice(0,4)
+        .map(([k,v])=>`${k}=${[...v].slice(0,4).join("/")}`);
+      if(ps.length) L.push(ps.join("  "));
+      return L.join("\n");
+    });
+  node.append("text")
+    .attr("x",d=>d.x0<width/2?d.x1+5:d.x0-5)
+    .attr("y",d=>(d.y0+d.y1)/2).attr("dy","0.35em")
+    .attr("text-anchor",d=>d.x0<width/2?"start":"end")
+    .text(d=>d.name.length>30?d.name.slice(0,28)+"…":d.name);
 
-// ---------- helpers for corpus features ----------
-const featureSets=m=>({
-  sources:new Set(m.summary.sources||[]),
-  tasks:new Set(m.summary.inference_tasks||[]),
-  endpoints:new Set((m.summary.endpoints||[])),
-  stages:new Set(m.summary.stages_present||[]),
-});
-function transitionKeys(m){
-  return new Set((m.transitions||[]).map(t=>
-    `${t.parameter} ${JSON.stringify(t.from)}→${JSON.stringify(t.to)}`));
-}
-
-// ---------- versions timeline ----------
-function renderVersions(models,mount){
-  models=models.slice().sort(naturalVer);
-  const rows=["sources","tasks","endpoints"];
-  let html=`<h2>${models[0].pkg} — ${models.length} versions</h2>`+
-    `<p class="count">added since previous = green, removed = struck</p><table><tr><th>version</th>`+
-    rows.map(r=>`<th>${r}</th>`).join("")+`<th>parameter transitions</th></tr>`;
-  let prev=null;
-  for(const m of models){
-    const f=featureSets(m), tk=transitionKeys(m);
-    html+=`<tr><td class="app">${m.version}</td>`;
-    for(const r of rows){
-      const cur=f[r==="sources"?"sources":r==="tasks"?"tasks":"endpoints"];
-      const pv=prev?featureSets(prev)[r==="sources"?"sources":r==="tasks"?"tasks":"endpoints"]:new Set();
-      const cells=[...cur].map(v=>{
-        const cls=prev&&!pv.has(v)?"added":""; return `<span class="tag ${cls}">${disp(v)}</span>`;});
-      const gone=prev?[...pv].filter(v=>!cur.has(v)):[];
-      const goneTags=gone.map(v=>`<span class="tag removed">${disp(v)}</span>`);
-      html+=`<td>${cells.concat(goneTags).join("")||'<span class="empty">—</span>'}</td>`;
-    }
-    const tcur=[...tk], tprev=prev?transitionKeys(prev):new Set();
-    html+=`<td>${tcur.map(v=>`<span class="tag ${prev&&!tprev.has(v)?"added":""}">${v}</span>`).join("")||'<span class="empty">—</span>'}</td></tr>`;
-    prev=m;
+  // parameter transitions, coloured by modality
+  if(m.transitions.length){
+    const t=d3.select(mount).append("div");
+    t.append("h2").text("Parameter transitions");
+    t.append("div").html(m.transitions.map(x=>
+      `<span class="tag" style="border-color:${colourFor(x.modality)}">`+
+      `<b>${x.modality}</b> ${x.parameter}: ${JSON.stringify(x.from)} → `+
+      `${JSON.stringify(x.to)} <span style="opacity:.6">(${x.from_stage}→${x.to_stage})</span></span>`
+    ).join(""));
   }
-  mount.innerHTML=html+"</table>";
 }
-const disp=v=>v.length>42?v.slice(0,40)+"…":v;
 
-// ---------- apps comparison ----------
-function renderApps(models,mount){
-  // union of features across apps, presence matrix
-  const dims=["sources","tasks","endpoints"];
-  let html=`<h2>${models.length} apps compared</h2>`;
-  for(const dim of dims){
-    const universe=[...new Set(models.flatMap(m=>[...featureSets(m)[dim]]))].sort();
-    if(!universe.length) continue;
-    html+=`<h2 style="font-size:.95rem">${dim}</h2><table><tr><th>app</th>`+
-      universe.map(u=>`<th>${disp(u)}</th>`).join("")+`</tr>`;
-    for(const m of models.slice().sort((a,b)=>a.pkg.localeCompare(b.pkg))){
-      const have=featureSets(m)[dim];
-      html+=`<tr><td class="app">${m.pkg}</td>`+
-        universe.map(u=>`<td style="text-align:center">${have.has(u)?
-          `<span class="dot" style="background:${col('inference')}"></span>`:""}</td>`).join("")+`</tr>`;
-    }
-    html+="</table>";
+// ---------- detail table ----------
+function renderDetail(m,mount){
+  const model=stagedModel(m);
+  const bs=[...model.buckets.values()]
+    .sort((a,b)=>a.modality.localeCompare(b.modality)||
+                 STAGE_ORDER.indexOf(a.stage)-STAGE_ORDER.indexOf(b.stage));
+  let h='<table><tr><th>modality</th><th>stage</th><th>modules</th>'+
+        '<th>operations</th><th>parameters</th><th>models / endpoints</th></tr>';
+  for(const b of bs){
+    const ps=Object.entries(b.params).map(([k,v])=>`${k}=${[...v].slice(0,6).join("/")}`);
+    const tail=[...b.models].map(s=>s.split("/").pop())
+      .concat(b.endpoints.size?[`${b.endpoints.size} endpoints`]:[]);
+    h+=`<tr><td><span class="tag" style="border-color:${colourFor(b.modality)}">${b.modality}</span></td>`+
+       `<td>${b.stage}</td><td>${b.modules.size||"—"}</td>`+
+       `<td class="mono">${[...b.ops].slice(0,10).join(", ")||"—"}</td>`+
+       `<td class="mono">${ps.join("<br>")||"—"}</td>`+
+       `<td class="mono">${tail.join(", ")||"—"}</td></tr>`;
   }
-  mount.innerHTML=html;
+  mount.innerHTML=h+"</table>";
 }
 
-// ---------- mode control ----------
-function activeMode(models){
-  if(MODE!=="auto") return MODE;
-  return scenario(models)==="single"?"sankey":scenario(models)==="versions"?"versions":"apps";
+// ---------- multi-app comparison ----------
+function renderCompare(ms,mount){
+  const mods=[...new Set(ms.flatMap(m=>m.modalities))].sort();
+  let h=`<h2>${ms.length} apps</h2><table><tr><th>app</th>`+
+    mods.map(x=>`<th><span class="tag" style="border-color:${colourFor(x)}">${x}</span></th>`).join("")+
+    `<th>transitions</th></tr>`;
+  for(const m of ms.slice().sort((a,b)=>a.pkg.localeCompare(b.pkg))){
+    const have=new Set(m.modalities);
+    h+=`<tr><td><b>${m.pkg}</b>${m.version?" v"+m.version:""}</td>`+
+      mods.map(x=>{
+        const st=[...new Set(m.chain.filter(e=>e.modality===x).map(e=>e.stage))]
+          .filter(s=>STAGE_ORDER.includes(s))
+          .sort((a,b)=>STAGE_ORDER.indexOf(a)-STAGE_ORDER.indexOf(b));
+        return `<td class="mono" style="text-align:center">${
+          have.has(x)?st.map(s=>s[0].toUpperCase()).join("→"):""}</td>`;
+      }).join("")+
+      `<td style="text-align:center">${m.transitions.length}</td></tr>`;
+  }
+  mount.innerHTML=h+'</table><p class="note">Letters are stages present per modality: '+
+    'C=capture, P=preprocess, F=features, I=inference, O=output.</p>';
 }
+
+// ---------- driver ----------
 function draw(){
-  const view=document.getElementById("view"), panel=document.getElementById("panel");
-  view.hidden=RECORDS.length===0;
-  if(!RECORDS.length) return;
-  const sc=scenario(RECORDS);
+  const view=document.getElementById("view");
+  view.hidden=!RECORDS.length; if(!RECORDS.length) return;
+  const ms=RECORDS.map(norm);
+  const single=ms.length===1;
+  document.getElementById("appname").textContent=
+    single?`${ms[0].pkg}${ms[0].version?" v"+ms[0].version:""}`:"";
   document.getElementById("count").textContent=
-    `${RECORDS.length} record${RECORDS.length>1?"s":""} · ${RECORDS[0].type}`;
-  // mode buttons available for this scenario
-  const choices=RECORDS.length<=1?["sankey"]:
-    sc==="versions"?["versions","apps","sankey"]:["apps","versions","sankey"];
-  const m=activeMode(RECORDS);
+    `${ms.length} record${single?"":"s"} · ${ms[0].type}`;
+
+  const choices=single?["pipeline","detail"]:["compare","pipeline","detail"];
+  const eff=MODE==="auto"?choices[0]:(choices.includes(MODE)?MODE:choices[0]);
   document.getElementById("modes").innerHTML=choices.map(c=>
-    `<button class="${(MODE==="auto"?choices[0]:MODE)===c?"on":""}" data-m="${c}">${
-      {sankey:"Sankey (first)",versions:"Version timeline",apps:"App comparison"}[c]}</button>`).join("");
+    `<button class="${eff===c?"on":""}" data-m="${c}">${
+      {pipeline:"Pipeline",detail:"Detail",compare:"Compare apps"}[c]}</button>`).join("");
   document.querySelectorAll("#modes button").forEach(b=>
     b.onclick=()=>{MODE=b.dataset.m;draw();});
-  panel.innerHTML="";
-  const eff=MODE==="auto"?choices[0]:MODE;
-  if(eff==="sankey") renderSankey(RECORDS[0],panel);
-  else if(eff==="versions") renderVersions(RECORDS,panel);
-  else renderApps(RECORDS,panel);
+
+  // modality filter chips (colour legend doubles as filter)
+  const allMods=[...new Set(ms.flatMap(m=>m.modalities))].sort();
+  document.getElementById("filters").innerHTML=allMods.map(x=>
+    `<span class="chip ${HIDDEN.has(x)?"off":""}" data-x="${x}">`+
+    `<i style="background:${colourFor(x)}"></i>${x}</span>`).join("");
+  document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{
+    const x=c.dataset.x; HIDDEN.has(x)?HIDDEN.delete(x):HIDDEN.add(x); draw();});
+
+  const panel=document.getElementById("panel"); panel.innerHTML="";
+  if(eff==="compare") renderCompare(ms,panel);
+  else if(eff==="detail") renderDetail(ms[0],panel);
+  else renderStaged(ms[0],panel);
 }
 
-// ---------- loading ----------
 function ingest(text){
   text=text.trim(); const out=[];
-  // jsonl: many lines; json: one document
-  if(text.includes("\n")&&!text.startsWith("{")===false){
-    // try line-by-line first (jsonl), fall back to whole-doc
-  }
-  try{ out.push(detect(JSON.parse(text))); return out; }catch(e){}
+  try{const o=JSON.parse(text); return Array.isArray(o)?o:[o];}catch(e){}
   for(const line of text.split("\n")) if(line.trim())
-    try{ out.push(detect(JSON.parse(line))); }catch(e){}
+    try{out.push(JSON.parse(line));}catch(e){}
   return out;
 }
 function addFiles(files){
-  const reads=[...files].map(f=>f.text().then(t=>{try{RECORDS.push(...ingest(t));}catch(e){}}));
-  Promise.all(reads).then(draw);
+  Promise.all([...files].map(f=>f.text().then(t=>{
+    try{RECORDS.push(...ingest(t));}catch(e){}}))).then(draw);
 }
 const drop=document.getElementById("drop"),fi=document.getElementById("file");
-drop.onclick=()=>fi.click();
-fi.onchange=e=>addFiles(e.target.files);
-document.getElementById("reset").onclick=()=>{RECORDS=[];MODE="auto";draw();
+drop.onclick=()=>fi.click(); fi.onchange=e=>addFiles(e.target.files);
+document.getElementById("reset").onclick=()=>{RECORDS=[];MODE="auto";HIDDEN=new Set();
   document.getElementById("view").hidden=true;};
 ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
 ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
