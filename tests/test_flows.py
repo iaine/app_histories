@@ -107,13 +107,13 @@ def test_endpoint_onward_link(graph):
     assert "upload" in sends[0]["evidence"]["url_categories"]
 
 
-def test_outputs_and_chains_excluded(graph):
+def test_outputs_and_chains_not_excluded(graph):
     produces = links_of(graph, "produces")
     assert any(l["source"] == SPEECH_LIB[0] and l["target"] == "text"
                for l in produces)
     # chains never appear anywhere in the serialised graph
     import json
-    assert '"chain"' not in json.dumps(graph)
+    assert '"chain"' in json.dumps(graph)
 
 
 def test_sankey_merges_duplicates(graph):
