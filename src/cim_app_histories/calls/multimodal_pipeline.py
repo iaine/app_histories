@@ -78,12 +78,63 @@ INPUT_SIGNATURES = {
         "apis": ["android/hardware/camera", "android/media/imagereader"],
         "permissions": ["android.permission.CAMERA"],
     },
+    # Bluetooth is split into three inputs because they answer different
+    # questions and have different evidence. The old single
+    # "bluetooth_midi" conflated MIDI instruments with audio devices and
+    # matched on the bare word "bluetooth", so any library mentioning it
+    # (a live-casting lib, an audio-effects lib) was linked as a MIDI
+    # input. None of the APIs that actually route Bluetooth audio were
+    # in the table at all.
+    "bluetooth_audio": {
+        # A Bluetooth mic/headset: audio is routed over SCO/HFP, or the
+        # app explicitly selects a BT audio device. This is the path a
+        # recorder app (Plaud, Otter with a headset) uses to capture from
+        # a wireless mic.
+        "keywords": ["startbluetoothsco", "setbluetoothscoon",
+                     "isbluetoothscoavailableoffcall", "bluetoothsco",
+                     "bluetoothheadset", "bluetoothprofile", "hfp_",
+                     "sco_audio", "type_bluetooth_sco",
+                     "setcommunicationdevice", "communicationdevice",
+                     "\u84dd\u7259\u8033\u673a",   # 蓝牙耳机 BT headset
+                     "\u84dd\u7259\u9ea6\u514b\u98ce"],  # 蓝牙麦克风
+        "apis": ["android/media/audiomanager",
+                 "android/bluetooth/bluetoothheadset",
+                 "android/bluetooth/bluetoothprofile"],
+        "permissions": ["android.permission.BLUETOOTH",
+                        "android.permission.BLUETOOTH_CONNECT",
+                        "android.permission.MODIFY_AUDIO_SETTINGS"],
+    },
+    "bluetooth_device": {
+        # A companion device link: BLE scanning/GATT or an RFCOMM socket.
+        # This is how purpose-built hardware (a Plaud recorder, a wearable)
+        # pairs and streams data to the app -- often NOT as an audio route
+        # but as a file/stream transfer over GATT or a socket.
+        "keywords": ["bluetoothgatt", "gattcharacteristic", "gattservice",
+                     "bluetoothlescanner", "scanfilter", "scanrecord",
+                     "bluetoothsocket", "rfcomm", "createrfcommsocket",
+                     "companiondevicemanager", "bonded_device",
+                     "bluetoothdevice", "bluetoothadapter",
+                     "\u84dd\u7259\u8bbe\u5907",   # 蓝牙设备 BT device
+                     "\u914d\u5bf9"],                # 配对 pairing
+        "apis": ["android/bluetooth/bluetoothadapter",
+                 "android/bluetooth/bluetoothgatt",
+                 "android/bluetooth/le/bluetoothlescanner",
+                 "android/bluetooth/bluetoothsocket",
+                 "android/companion/companiondevicemanager"],
+        "permissions": ["android.permission.BLUETOOTH",
+                        "android.permission.BLUETOOTH_CONNECT",
+                        "android.permission.BLUETOOTH_SCAN",
+                        "android.permission.BLUETOOTH_ADMIN"],
+    },
     "bluetooth_midi": {
-        "keywords": ["midimanager", "mididevice", "bluetooth", "ble_midi",
-                     "midi",
-                     "\u84dd\u7259"],            # 蓝牙 bluetooth
+        # Genuinely MIDI over BLE: instruments, controllers. Kept separate
+        # so a music app's MIDI support is not confused with a headset.
+        "keywords": ["midimanager", "mididevice", "ble_midi", "midi_input",
+                     "midioutputport", "midiinputport", "midireceiver",
+                     "\u84dd\u7259midi",              # 蓝牙midi BLE MIDI
+                     "\u4e50\u5668"],                 # 乐器 instrument
         "apis": ["android/media/midi/midimanager",
-                 "android/bluetooth/bluetoothadapter"],
+                 "android/media/midi/mididevice"],
         "permissions": ["android.permission.BLUETOOTH",
                         "android.permission.BLUETOOTH_CONNECT"],
     },
@@ -358,7 +409,13 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
                              "module": name, "vendor": vendor,
                              "operations": mod_stages[stage]}
                     params = stage_params.get(stage)
-                    if params and stage != "output":
+                    # Output stages carry parameters too. Originally excluded
+                    # (an output is "a transcript", not a configuration), but
+                    # a Bluetooth playback route IS configured at the output:
+                    # bt_profile=a2dp with ldac at 44100/stereo is precisely
+                    # what an app sending audio to a speaker looks like, and
+                    # is the evidence that it plays rather than captures.
+                    if params:
                         entry["parameters"] = params
                     chain.append(entry)
 

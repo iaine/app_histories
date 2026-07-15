@@ -76,6 +76,21 @@ MODALITY_STAGES = {
                       "intent", "\u7ffb\u8bd1"],                     # 翻译
         "output": ["completion", "suggestion", "reply", "\u56de\u590d"],  # 回复
     },
+    "bluetooth": {
+        # A companion device's own chain: discover/pair, open a link,
+        # move data across it, then hand off (usually to the audio chain).
+        "capture": ["bluetoothlescanner", "startscan", "scanfilter",
+                    "companiondevicemanager", "bonded_device", "pairing",
+                    "createbond", "\u914d\u5bf9"],                     # 配对
+        "preprocess": ["bluetoothgatt", "gattcharacteristic", "notify_value",
+                       "rfcomm", "bluetoothsocket", "l2cap", "mtu_",
+                       "connectgatt"],
+        "features": ["chunk_transfer", "packet_assembl", "opus_frame",
+                     "adpcm", "sbc_decode", "codec_negotiat"],
+        "inference": ["device_model", "firmware_", "battery_level"],
+        "output": ["file_received", "recording_download", "sync_complete",
+                   "upload_recording", "\u540c\u6b65"],               # 同步
+    },
     "sensor": {
         "capture": ["sensormanager", "accelerometer", "gyroscope", "step_counter",
                     "\u4f20\u611f\u5668"],                           # 传感器
@@ -120,6 +135,15 @@ def canonical_modality(modality):
 # INPUT_SIGNATURES in multimodal_pipeline).
 INPUT_MODALITY = {
     "microphone": "audio",
+    # A Bluetooth headset/mic is an audio route: it feeds the same
+    # capture -> preprocess -> features chain as the built-in mic.
+    "bluetooth_audio": "audio",
+    # A companion-device link is its own modality: purpose-built hardware
+    # (a Plaud recorder, a wearable) streams over GATT/RFCOMM, which is a
+    # transfer path rather than an audio route. Its onward processing is
+    # often "receive a file, then run the audio chain on it", so keeping
+    # it distinct is what makes that two-step visible.
+    "bluetooth_device": "bluetooth",
     "bluetooth_midi": "audio",
     "network_stream": "audio",
     "camera": "video",
@@ -145,7 +169,8 @@ KNOWN_SAMPLE_RATES = {8000, 11025, 16000, 22050, 24000, 32000, 44100, 48000}
 MODALITY_PARAMS = {
     "audio": {"sample_rate", "channel_layout", "n_fft", "frame_size",
               "hop_length", "win_length", "n_mels", "bitrate", "chunk_size",
-              "buffer_size", "codecs", "num_threads"},
+              "buffer_size", "codecs", "num_threads",
+              "bt_profile", "bt_codecs"},
     "video": {"resolution", "fps", "bitrate", "codecs", "num_threads",
               "batch_size"},
     "image": {"resolution", "image_size", "input_width", "input_height",
@@ -154,6 +179,10 @@ MODALITY_PARAMS = {
              "hidden_size", "batch_size", "num_threads"},
     "sensor": {"sampling_period", "window_size", "win_length", "batch_size"},
     "location": {"sampling_period"},
+    # A BT link's own parameters: negotiated codec, MTU/packet size, and
+    # the sample rate an SCO/A2DP route runs at.
+    "bluetooth": {"codecs", "sample_rate", "chunk_size", "buffer_size",
+                  "bitrate", "channel_layout"},
 }
 
 _NAMED_PARAM_RE = re.compile(
@@ -177,6 +206,19 @@ _PARAM_CANON = {
 _RATE_RE = re.compile(r"\b(8000|11025|16000|22050|24000|32000|44100|48000)\b")
 _RATE_K_RE = re.compile(r"\b(8|16|22|24|32|48)k(?:hz)?\b")
 _CHANNELS_RE = re.compile(r"\b(mono|stereo)\b")
+
+# Bluetooth audio profiles. SCO/HFP: 8/16 kHz bidirectional voice — the only
+# route that carries a microphone. A2DP: one-way playback to a speaker or
+# headphone. Distinguishing them is what stops "app talks to a BT speaker"
+# being read as "app captures from a BT mic".
+_BT_SCO_RE = re.compile(
+    r"(startbluetoothsco|setbluetoothscoon|bluetoothsco|sco_audio|"
+    r"type_bluetooth_sco|bluetoothheadset|\bhfp\b|\bhsp\b|"
+    r"isbluetoothscoavailableoffcall|setcommunicationdevice)", re.I)
+_BT_A2DP_RE = re.compile(
+    r"(bluetootha2dp|\ba2dp\b|type_bluetooth_a2dp|\bavrcp\b)", re.I)
+# Codecs specific to a Bluetooth link (distinct from file/container codecs).
+_BT_CODECS = ["sbc", "msbc", "cvsd", "aptx", "aptx_hd", "ldac", "lc3", "aac_bt"]
 _RESOLUTION_RE = re.compile(r"\b(\d{3,4})\s*[x\u00d7]\s*(\d{3,4})\b")
 _CODECS = ["opus", "aac", "pcm", "flac", "vorbis", "amr", "mp3",
            "h264", "h265", "hevc", "vp8", "vp9", "av1", "jpeg", "png", "webp"]
@@ -205,6 +247,19 @@ def extract_parameters(ascii_text, modality=None):
         ch = set(_CHANNELS_RE.findall(ascii_text))
         if ch:
             params["channel_layout"] = ch
+
+    if modality in (None, "audio"):
+        prof = set()
+        if _BT_SCO_RE.search(ascii_text):
+            prof.add("sco")
+        if _BT_A2DP_RE.search(ascii_text):
+            prof.add("a2dp")
+        if prof:
+            params["bt_profile"] = prof
+        bt_c = {c for c in _BT_CODECS
+                if re.search(r"\b" + re.escape(c) + r"\b", ascii_text)}
+        if bt_c:
+            params["bt_codecs"] = bt_c
 
     if modality in (None, "video", "image"):
         res = {f"{w}x{h}" for w, h in _RESOLUTION_RE.findall(ascii_text)}
@@ -309,6 +364,18 @@ def extract_parameters_by_stage(ascii_text, modality, stages, window=200):
             if stage:
                 per_stage[stage].setdefault("channel_layout", set()).add(m.group(1))
 
+    if modality in (None, "audio"):
+        for rx, val in ((_BT_SCO_RE, "sco"), (_BT_A2DP_RE, "a2dp")):
+            for m in rx.finditer(ascii_text):
+                stage = nearest_stage(m.start())
+                if stage:
+                    per_stage[stage].setdefault("bt_profile", set()).add(val)
+        for c in _BT_CODECS:
+            for m in re.finditer(r"\b" + re.escape(c) + r"\b", ascii_text):
+                stage = nearest_stage(m.start())
+                if stage:
+                    per_stage[stage].setdefault("bt_codecs", set()).add(c)
+
     if modality in (None, "video", "image"):
         for m in _RESOLUTION_RE.finditer(ascii_text):
             stage = nearest_stage(m.start())
@@ -321,8 +388,24 @@ def extract_parameters_by_stage(ascii_text, modality, stages, window=200):
     # made a WebView library (location APIs + a full media stack) report
     # sample_rate/fps/codecs on its location stages -- borrowed numbers that
     # were never evidence about location at all.
+    # Route-level facts: not stage-local. A Bluetooth profile/codec
+    # characterises the whole link, so it belongs on every stage of the
+    # modality rather than only where the string happens to sit. (Values
+    # that genuinely change along the chain -- sample_rate, resolution --
+    # stay proximity-attributed above.)
+    route = {}
+    if modality in (None, "audio"):
+        whole = extract_parameters(ascii_text, modality)
+        for k in ("bt_profile", "bt_codecs"):
+            if k in whole:
+                route[k] = set(whole[k])
+
+    allowed = MODALITY_PARAMS.get(modality) if modality else None
     out = {}
     for stage in stages:
-        found = per_stage.get(stage) or {}
-        out[stage] = {k: sorted(v) for k, v in found.items()}
+        found = dict(per_stage.get(stage) or {})
+        for k, v in route.items():
+            found.setdefault(k, set()).update(v)
+        out[stage] = {k: sorted(v) for k, v in found.items()
+                      if allowed is None or k in allowed}
     return out
