@@ -95,10 +95,16 @@ const cvar=k=>getComputedStyle(document.documentElement).getPropertyValue("--"+k
 const colourFor=m=>cvar(m)||cvar("unknown");
 let RECORDS=[], MODE="auto", HIDDEN=new Set();
 
+// Older result files (before modality reconciliation) may carry the model
+// classifier's own labels. Fold them onto the canonical set so a file
+// produced by either version renders the same way.
+const MODALITY_ALIAS={vision:"image", nlp:"text", speech:"audio", voice:"audio"};
+const canon=m=>MODALITY_ALIAS[(m||"").toLowerCase()]||(m||"unknown").toLowerCase();
+
 // ---------- normalise a record ----------
 function norm(rec){
   const chain=rec.chain||[];
-  const modalities=[...new Set(chain.map(e=>e.modality).filter(Boolean))].sort();
+  const modalities=[...new Set(chain.map(e=>canon(e.modality)).filter(Boolean))].sort();
   return {
     raw:rec,
     pkg:(rec.app&&rec.app.pkg)||rec.input||"app",
@@ -119,11 +125,12 @@ function stagedModel(m){
   const buckets=new Map();   // key: modality|stage
   const key=(mod,st)=>mod+"|"+st;
   for(const e of m.chain){
-    if(HIDDEN.has(e.modality)) continue;
+    const emod=canon(e.modality);
+    if(HIDDEN.has(emod)) continue;
     const st=e.stage; if(!STAGE_ORDER.includes(st)) continue;
-    const k=key(e.modality,st);
+    const k=key(emod,st);
     let b=buckets.get(k);
-    if(!b){b={modality:e.modality,stage:st,modules:new Set(),ops:new Set(),
+    if(!b){b={modality:emod,stage:st,modules:new Set(),ops:new Set(),
               models:new Set(),endpoints:new Set(),params:{}};buckets.set(k,b);}
     if(e.module) b.modules.add(e.module);
     (e.operations||[]).forEach(o=>b.ops.add(o));
@@ -288,7 +295,7 @@ function renderCompare(ms,mount){
     const have=new Set(m.modalities);
     h+=`<tr><td><b>${m.pkg}</b>${m.version?" v"+m.version:""}</td>`+
       mods.map(x=>{
-        const st=[...new Set(m.chain.filter(e=>e.modality===x).map(e=>e.stage))]
+        const st=[...new Set(m.chain.filter(e=>canon(e.modality)===x).map(e=>e.stage))]
           .filter(s=>STAGE_ORDER.includes(s))
           .sort((a,b)=>STAGE_ORDER.indexOf(a)-STAGE_ORDER.indexOf(b));
         return `<td class="mono" style="text-align:center">${
