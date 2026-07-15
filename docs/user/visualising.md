@@ -64,6 +64,40 @@ behaviour. For a whole-corpus view rather than one app at a time,
 aggregate the JSON in pandas (see [Working with results](results.md))
 and feed your own totals to a plotting library.
 
+## The flow viewer
+
+Open `docs/viewer/sankey.html` and drop in one or more `*.flows.jsonl`
+or `*.listening.json` files. Three views:
+
+**Pipeline** (one app) is the default: a Sankey whose **columns are the
+processing stages** — capture → preprocess → features → inference →
+output — and whose **colours are the modality** (audio, video, image,
+text, sensor, location, network). Each block is one (modality, stage)
+bucket, labelled with how many native libraries fall in it; hover for
+the operations, parameters, models and endpoint counts behind it.
+
+Two things make this readable on real apps. Blocks aggregate: TikTok's
+4,600 chain entries across 500+ libraries collapse to about 30 blocks
+rather than a 2,000-node hairball. And **stages a modality does not use
+are skipped** — location shows capture → preprocess → features →
+output with no inference column drawn, because none was evidenced.
+
+Below the diagram, parameter transitions are listed per modality
+(`audio sample_rate: [48000] → [16000] (capture→features)`).
+
+The colour chips above the diagram double as **filters**: click a
+modality to hide it, which is the quickest way to read one pipeline in
+an app that does everything.
+
+**Detail** is the same aggregation as a table — modality, stage, module
+count, operations, parameters, models/endpoints — for reading exact
+values or copying them out.
+
+**Compare apps** (several files) puts one row per app and shows which
+stages each modality reaches, e.g. `C→P→F→I→O`, plus a transition
+count. It is the fastest way to see that one app captures audio but
+another only streams it.
+
 ## Metadata visualisations
 
 The `metadata` output is categorical rather than a flow, so it has its
