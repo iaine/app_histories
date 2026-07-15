@@ -175,3 +175,172 @@ def test_no_module_wide_parameter_fallback():
     loc = [e for e in g["chain"] if e.get("modality") == "location"]
     for e in loc:
         assert not e.get("parameters")
+
+
+# --- Bluetooth audio devices (mics, headsets, speakers) --------------
+def test_bluetooth_audio_is_a_distinct_input():
+    """bluetooth_audio (mics/headsets/speakers) is separate from
+    bluetooth_midi (musical instruments): different research objects."""
+    from cim_app_histories.calls.multimodal_pipeline import INPUT_SIGNATURES
+    assert "bluetooth_audio" in INPUT_SIGNATURES
+    assert "bluetooth_midi" in INPUT_SIGNATURES
+    # the bare word "bluetooth" must not be a MIDI keyword any more:
+    # it matched every library mentioning the radio
+    assert "bluetooth" not in INPUT_SIGNATURES["bluetooth_midi"]["keywords"]
+
+
+def test_bluetooth_mic_capture_detected_with_sco_profile():
+    """A recorder capturing from a BT headset (Plaud-shaped) must show
+    bluetooth_audio as an input and SCO routing at the capture stage."""
+    lib = ("lib/arm64/libaudio.so", so([
+        "android/bluetooth/bluetoothheadset", "bluetoothheadset",
+        "startbluetoothsco", "setcommunicationdevice",
+        "sample_rate=16000", "mono", "msbc", "audiorecord",
+        "x" * 400, "resample", "denoise", "vad",
+        "x" * 400, "log_mel", "n_mels 80",
+        "x" * 400, "asr", "speech_to_text", "transcript"]))
+    g = build_flow_graph([lib], permissions=[
+        "android.permission.RECORD_AUDIO",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.MODIFY_AUDIO_SETTINGS"])
+    assert "bluetooth_audio" in g["summary"]["inputs"]
+    cap = [e for e in g["chain"]
+           if e.get("modality") == "audio" and e.get("stage") == "capture"]
+    assert cap, "expected an audio capture stage"
+    p = cap[0].get("parameters", {})
+    assert p.get("bt_profile") == ["sco"]      # microphone-capable channel
+    assert "msbc" in p.get("bt_codecs", [])
+
+
+def test_bluetooth_speaker_playback_does_not_claim_capture():
+    """An app that only plays TO a BT speaker (A2DP) must not be shown
+    capturing from it: A2DP carries no microphone."""
+    lib = ("lib/arm64/libplayer.so", so([
+        "bluetootha2dp", "a2dp", "ldac", "aptx", "exoplayer",
+        "44100", "stereo", "x" * 400, "loudness",
+        "x" * 400, "playlist", "next_track"]))
+    g = build_flow_graph([lib],
+                         permissions=["android.permission.BLUETOOTH_CONNECT"])
+    assert not any(e.get("stage") == "capture" for e in g["chain"])
+    out = [e for e in g["chain"]
+           if e.get("modality") == "audio" and e.get("stage") == "output"]
+    assert out and out[0]["parameters"]["bt_profile"] == ["a2dp"]
+
+
+def test_bt_profile_distinguishes_sco_from_a2dp():
+    from cim_app_histories.calls.stages import extract_parameters
+    sco = extract_parameters("startbluetoothsco audiorecord 16000 mono", "audio")
+    assert sco["bt_profile"] == ["sco"]
+    a2dp = extract_parameters("bluetootha2dp ldac 44100 stereo", "audio")
+    assert a2dp["bt_profile"] == ["a2dp"]
+
+
+def test_bluetooth_params_scoped_to_audio_only():
+    from cim_app_histories.calls.stages import extract_parameters
+    txt = "startbluetoothsco ldac locationmanager"
+    assert "bt_profile" not in extract_parameters(txt, "location")
+    assert "bt_profile" in extract_parameters(txt, "audio")
+
+
+# --- Bluetooth companion devices (BLE/GATT hardware) -----------------
+def test_bluetooth_device_is_a_distinct_input():
+    """bluetooth_device (BLE/GATT/RFCOMM companion hardware) is separate
+    from bluetooth_audio (an SCO/A2DP route): purpose-built hardware
+    streams over a data link, which is not an audio route."""
+    from cim_app_histories.calls.multimodal_pipeline import INPUT_SIGNATURES
+    assert "bluetooth_device" in INPUT_SIGNATURES
+    sig = INPUT_SIGNATURES["bluetooth_device"]
+    assert "bluetoothgatt" in sig["keywords"]
+    assert "android.permission.BLUETOOTH_SCAN" in sig["permissions"]
+
+
+def test_companion_recorder_shows_link_then_audio_chain():
+    """The Plaud shape: a companion recorder pairs, moves the recording
+    over GATT, and only then is the audio processed. Both chains must be
+    present and distinct -- that two-step is the finding."""
+    link = ("lib/arm64/libdevicelink.so", so([
+        "BluetoothLeScanner", "startScan", "companiondevicemanager", "pairing",
+        "x" * 400, "connectGatt", "bluetoothgatt", "gattcharacteristic",
+        "x" * 400, "chunk_transfer", "opus_frame", "sbc_decode",
+        "x" * 400, "file_received", "recording_download", "sync_complete"]))
+    asr = ("lib/arm64/libasr.so", so([
+        "audiorecord", "sample_rate=16000", "mono",
+        "x" * 400, "resample", "denoise", "vad",
+        "x" * 400, "log_mel", "n_mels 80",
+        "x" * 400, "asr", "speech_to_text", "transcript"]))
+    g = build_flow_graph([link, asr], permissions=[
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.RECORD_AUDIO"])
+
+    assert "bluetooth_device" in g["summary"]["inputs"]
+    assert "bluetooth" in g["summary"]["modalities"]
+    assert "audio" in g["summary"]["modalities"]
+
+    bt = [e["stage"] for e in g["chain"]
+          if e.get("modality") == "bluetooth" and e.get("operations")]
+    assert "capture" in bt            # discovery/pairing
+    assert "output" in bt             # recording received
+    audio = [e["stage"] for e in g["chain"]
+             if e.get("modality") == "audio" and e.get("operations")]
+    assert "inference" in audio       # ...then transcribed
+
+
+def test_bluetooth_device_chain_is_not_audio_modality():
+    """A GATT link is a transfer path, not an audio route: it must not be
+    folded into the audio chain, or the two-step disappears."""
+    link = ("lib/arm64/libdevicelink.so", so([
+        "bluetoothgatt", "connectGatt", "gattcharacteristic",
+        "bluetoothlescanner", "startScan", "file_received"]))
+    g = build_flow_graph([link],
+                         permissions=["android.permission.BLUETOOTH_SCAN"])
+    bt_entries = [e for e in g["chain"] if e.get("modality") == "bluetooth"]
+    assert bt_entries, "expected a bluetooth chain"
+
+
+# --- regressions from the old single bluetooth_midi input ------------
+def test_bare_bluetooth_keyword_does_not_create_midi_link():
+    """Regression: 'bluetooth_midi' used to match the bare word
+    'bluetooth', so a live-casting library was reported as a MIDI input
+    (TikTok: libdex_df_live_cast.so linked on that single keyword)."""
+    lib = ("lib/arm64/liblivecast.so", so(["bluetooth", "rtmp", "encode"]))
+    g = build_flow_graph([lib], permissions=[
+        "android.permission.BLUETOOTH", "android.permission.BLUETOOTH_CONNECT"])
+    assert not [i for i in g["summary"]["inputs"] if i.startswith("bluetooth")]
+
+
+def test_bare_midi_keyword_does_not_create_midi_link():
+    """Regression: an audio-effects library was linked as a MIDI input on
+    the single keyword 'midi' (TikTok: libaudioeffect.so)."""
+    lib = ("lib/arm64/libaudioeffect.so", so(["midi", "reverb", "equalizer"]))
+    g = build_flow_graph([lib], permissions=[
+        "android.permission.BLUETOOTH", "android.permission.BLUETOOTH_CONNECT"])
+    assert "bluetooth_midi" not in g["summary"]["inputs"]
+
+
+def test_real_midi_instrument_still_detected():
+    """The split must not lose genuine MIDI: instruments and controllers
+    remain a distinct research object."""
+    lib = ("lib/arm64/libmidi.so", so([
+        "midimanager", "mididevice", "midiinputport", "midioutputport",
+        "ble_midi"]))
+    g = build_flow_graph([lib],
+                         permissions=["android.permission.BLUETOOTH_CONNECT"])
+    assert "bluetooth_midi" in g["summary"]["inputs"]
+
+
+def test_bt_route_facts_apply_to_whole_chain():
+    """bt_profile/bt_codecs characterise the LINK, not one stage: a
+    library speaking A2DP speaks it for the whole path, wherever the
+    string sits. (Values that genuinely change along the chain, like
+    sample_rate, stay proximity-attributed.)"""
+    lib = ("lib/arm64/libplayer.so", so([
+        "bluetootha2dp", "ldac", "44100", "stereo",
+        "x" * 500, "loudness", "x" * 500, "playlist", "next_track"]))
+    g = build_flow_graph([lib],
+                         permissions=["android.permission.BLUETOOTH_CONNECT"])
+    audio = [e for e in g["chain"]
+             if e.get("modality") == "audio" and e.get("parameters")]
+    assert audio, "expected audio stages with parameters"
+    for e in audio:
+        assert e["parameters"].get("bt_profile") == ["a2dp"]
