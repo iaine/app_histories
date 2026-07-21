@@ -344,3 +344,23 @@ def test_bt_route_facts_apply_to_whole_chain():
     assert audio, "expected audio stages with parameters"
     for e in audio:
         assert e["parameters"].get("bt_profile") == ["a2dp"]
+
+
+def test_bluetooth_detected_from_library_name_when_strings_stripped():
+    """A purpose-built BLE library (Plaud ships libtnt_ble_utils.so) is a
+    Bluetooth device module by its NAME, even when a Flutter/Dart build
+    leaves no readable BluetoothGatt/SCO strings inside it. Filename
+    evidence must catch this, or Flutter apps silently show no Bluetooth."""
+    lib = ("lib/arm64-v8a/libtnt_ble_utils.so", so(["opaque", "dartaot"]))
+    g = build_flow_graph([lib], permissions=[
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT"])
+    assert "bluetooth_device" in g["summary"]["inputs"]
+    link = [l for l in g["links"] if l["source"] == "bluetooth_device"][0]
+    assert link["evidence"].get("name_hint")
+
+
+def test_a2dp_library_name_detected():
+    lib = ("lib/arm64/liba2dp_audio.so", so(["render"]))
+    g = build_flow_graph([lib], permissions=["android.permission.BLUETOOTH_CONNECT"])
+    assert "bluetooth_audio" in g["summary"]["inputs"]

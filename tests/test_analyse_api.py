@@ -72,3 +72,19 @@ def test_incomplete_base_warning(monkeypatch):
     monkeypatch.setattr(an, "extract_dex_urls", lambda a: [])
     g = an.analyse_flows("base.apk")
     assert "warning" in g and "split App Bundle" in g["warning"]
+
+
+def test_pkg_version_available_for_gephi(monkeypatch):
+    """Gephi's node table reads per-node attributes. pkg/version must be
+    on every node, plus flat top-level and nested 'app', so a converter
+    finds them wherever it looks."""
+    apk = FakeAPK(
+        {"lib/arm64/libx.so": so(["audiorecord", "asr"])},
+        ["android.permission.RECORD_AUDIO"], [], pkg="com.demo", ver="2.5")
+    patch(monkeypatch, apk)
+    g = an.analyse_flows("x.apk")
+    assert g["pkg"] == "com.demo" and g["version"] == "2.5"        # flat
+    assert g["app"] == {"pkg": "com.demo", "version": "2.5"}       # nested
+    assert g["nodes"], "expected nodes"
+    for n in g["nodes"]:                                           # per-node
+        assert n["pkg"] == "com.demo" and n["version"] == "2.5"
