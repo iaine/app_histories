@@ -103,6 +103,8 @@ INPUT_SIGNATURES = {
         "permissions": ["android.permission.BLUETOOTH",
                         "android.permission.BLUETOOTH_CONNECT",
                         "android.permission.MODIFY_AUDIO_SETTINGS"],
+        "name_hints": ["a2dp", "sco", "hfp", "bt_audio", "btaudio",
+                       "bluetooth_audio"],
     },
     "bluetooth_device": {
         # A companion device link: BLE scanning/GATT or an RFCOMM socket.
@@ -125,6 +127,8 @@ INPUT_SIGNATURES = {
                         "android.permission.BLUETOOTH_CONNECT",
                         "android.permission.BLUETOOTH_SCAN",
                         "android.permission.BLUETOOTH_ADMIN"],
+        "name_hints": ["ble", "_bt_", "bt_utils", "bluetooth", "gatt",
+                       "spp", "rfcomm"],
     },
     "bluetooth_midi": {
         # Genuinely MIDI over BLE: instruments, controllers. Kept separate
@@ -421,9 +425,18 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
 
         # ---- input -> module links (evidence-gated)
         with profiler.stage("input_links"):
+            libname = name.rsplit("/", 1)[-1].lower()
             for input_id in wanted:
                 score, ev = find_evidence(INPUT_SIGNATURES[input_id],
                                           ascii_text, i18n_text, permissions)
+                # The library NAME is evidence too: a purpose-built module
+                # like libtnt_ble_utils.so / liba2dp.so declares its job in
+                # its filename even when a Flutter/Dart build leaves few
+                # readable API strings inside. Matched name hints score 2.
+                for hint in INPUT_SIGNATURES[input_id].get("name_hints", []):
+                    if hint in libname:
+                        score += 2
+                        ev.setdefault("name_hint", []).append(hint)
                 if score <= 0:
                     continue
                 trace = trace_strengthens(traced, input_id, name, vendor)
