@@ -126,9 +126,20 @@ def analyse_flows(apk_path, dx=None, config=None, profiler=None):
                              dx=dx, config=config, dex_urls=dex_urls,
                              profiler=profiler)
     graph["summary"] = {**graph["summary"], **info}
+    pkg = apk.get_package()
+    version = apk.get_androidversion_name()
+    graph["app"] = {"pkg": pkg, "version": version}
+    # Gephi (and any node-table consumer) reads per-NODE attributes, not a
+    # top-level object. Stamp pkg/version onto every node so the Data
+    # Laboratory columns populate, and also expose them as flat top-level
+    # keys so a converter reading record["pkg"] finds them regardless of
+    # whether it expects the flat or the nested ("app") shape.
+    graph["pkg"] = pkg
+    graph["version"] = version
+    for node in graph["nodes"]:
+        node.setdefault("pkg", pkg)
+        node.setdefault("version", version)
     graph["sankey"] = to_sankey(graph)
-    graph["app"] = {"pkg": apk.get_package(),
-                     "version": apk.get_androidversion_name()}
     if info["incomplete_base_apk"]:
         graph["warning"] = ("no native libraries found; likely a split App "
                             "Bundle base APK. Provide the universal APK or "

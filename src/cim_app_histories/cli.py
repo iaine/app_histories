@@ -182,7 +182,12 @@ def task_flows(apk_path, options=None):
     # we still want stage timings, so build via the shared path and attach.
     graph = analyse_flows(apk_path, dx=dx, profiler=profiler)
     rec = dict(base_record(apk_path, "flows"),
-               graph=graph,
+               app=graph.get("app"),
+               pkg=graph.get("pkg"),
+               version=graph.get("version"),
+               graph={"nodes": graph["nodes"], "links": graph["links"]},
+               chain=graph.get("chain", []),
+               parameter_transitions=graph.get("parameter_transitions", []),
                sankey=graph.get("sankey"),
                summary=graph["summary"])
     if "warning" in graph:
