@@ -55,30 +55,42 @@ def gather_split_apks(apk_path):
 
 
 def collect_all_files(apk_path):
-    """Open an APK and gather its files, merging sibling split APKs when
-    the base contains no native libraries.
+    """Open an APK and gather its files, merging any sibling split APKs.
+
+    Split App Bundles put different native libraries in different splits:
+    the base may carry graphics libs while audio/ASR libs live in
+    ``config.<abi>.apk``. So we merge every sibling split that contributes
+    native libraries, not only when the base has none -- keying on
+    "base is empty" missed apps (Otter) whose base holds a few graphics
+    ``.so`` while the audio libraries sit in a split.
 
     :returns: (apk, files, info) where info records native_libs count,
         any splits_merged, and incomplete_base_apk (True when no native
-        libs were found and no splits could be located).
+        libs were found anywhere and no splits could be located).
     """
     from androguard.core.apk import APK
     apk = APK(str(apk_path))
     files = collect_apk_files(apk)
+    seen = {n for n, _ in files}
     info = {"native_libs": sum(1 for n, _ in files if n.endswith(".so")),
             "splits_merged": []}
 
-    if info["native_libs"] == 0:
-        for sib in gather_split_apks(apk_path):
-            try:
-                sapk = APK(str(sib))
-            except Exception:
-                continue
-            sfiles = collect_apk_files(sapk)
-            if any(n.endswith(".so") for n, _ in sfiles):
-                files.extend(sfiles)
-                info["splits_merged"].append(sib.name)
-        info["native_libs"] = sum(1 for n, _ in files if n.endswith(".so"))
+    for sib in gather_split_apks(apk_path):
+        try:
+            sapk = APK(str(sib))
+        except Exception:
+            continue
+        sfiles = collect_apk_files(sapk)
+        # only merge a split that adds native libraries not already present,
+        # so a language/density split doesn't inflate the file set and the
+        # same lib isn't merged twice
+        new_so = [(n, d) for n, d in sfiles
+                  if n.endswith(".so") and n not in seen]
+        if new_so:
+            files.extend(new_so)
+            seen.update(n for n, _ in new_so)
+            info["splits_merged"].append(sib.name)
+    info["native_libs"] = sum(1 for n, _ in files if n.endswith(".so"))
 
     info["incomplete_base_apk"] = (
         info["native_libs"] == 0 and not info["splits_merged"])
@@ -104,6 +116,28 @@ def extract_dex_urls(apk):
     return sorted(urls)
 
 
+def extract_dex_inputs(apk):
+    """Framework-level capture inputs evidenced by API calls in the app's
+    DEX -- e.g. ``{"microphone": ["AudioRecord"]}``. Mirrors
+    extract_dex_urls: some apps (Otter) capture audio through the Android
+    framework (AudioRecord) in Java/Kotlin and ship no audio native
+    library, so the microphone input is invisible to native-.so scanning
+    but present in the DEX. Unions the per-dex evidence across every
+    classes*.dex."""
+    from .dex.dex import analyseDEX
+    merged = {}
+    try:
+        for dex in apk.get_all_dex():
+            try:
+                for k, v in analyseDEX(dex).audio_inputs().items():
+                    merged.setdefault(k, set()).update(v)
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return {k: sorted(v) for k, v in merged.items()}
+
+
 # ---------------------------------------------------------------------------
 # Public one-call wrappers (notebook / script entry points)
 # ---------------------------------------------------------------------------
@@ -122,9 +156,10 @@ def analyse_flows(apk_path, dx=None, config=None, profiler=None):
     """
     apk, files, info = collect_all_files(apk_path)
     dex_urls = extract_dex_urls(apk)
+    dex_inputs = extract_dex_inputs(apk)
     graph = build_flow_graph(files, permissions=apk.get_permissions(),
                              dx=dx, config=config, dex_urls=dex_urls,
-                             profiler=profiler)
+                             dex_inputs=dex_inputs, profiler=profiler)
     graph["summary"] = {**graph["summary"], **info}
     pkg = apk.get_package()
     version = apk.get_androidversion_name()

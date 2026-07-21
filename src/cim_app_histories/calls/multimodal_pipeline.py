@@ -345,7 +345,7 @@ def trace_strengthens(traced, input_id, module_name, vendor):
 # Graph construction
 # ---------------------------------------------------------------------------
 def build_flow_graph(files, permissions=None, dx=None, config=None,
-                     profiler=None, dex_urls=None):
+                     profiler=None, dex_urls=None, dex_inputs=None):
     """Build the input -> module -> onward graph for one app.
 
     :param files: iterable of (name, bytes) -- native libs and model assets
@@ -358,6 +358,12 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
         DEX (Java/Kotlin) code. Most chat/streaming backends live here, not
         in native libraries, so without this an LLM client or music app
         shows no endpoints. Attributed to an "app_code" node.
+    :param dex_inputs: optional {input_id: [api names]} of framework-level
+        capture inputs found in the DEX (e.g. {"microphone": ["AudioRecord"]}).
+        Apps that record via the Android framework in Java/Kotlin (Otter:
+        AudioRecord, no audio native library) are invisible to native-.so
+        input scanning; this makes the microphone input appear. Attributed
+        to the "app_code" node, with evidence kind "dex_api".
     :returns: {"nodes": [...], "links": [...], "summary": {...}}
     """
     profiler = profiler or NullProfiler()
@@ -504,6 +510,38 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
                 chain.append({"modality": "network", "stage": "output",
                               "module": app_node, "endpoint": endpoint,
                               "source_layer": "dex", "categories": cats})
+
+    # ---- app (dex) -> input links: framework capture in Java/Kotlin.
+    # An app can record audio via android.media.AudioRecord without any
+    # audio native library (Otter). The .so scan above cannot see that,
+    # so the microphone input never fired. Here a capture API call found
+    # in the DEX is the evidence -- attributed to app_code, not a library,
+    # because that is where the code lives. A permission may corroborate
+    # (+1) but, as everywhere, never creates the link on its own.
+    with profiler.stage("dex_inputs"):
+        if dex_inputs:
+            app_node = "app_code"
+            for input_id, apis in dex_inputs.items():
+                if input_id not in wanted:
+                    continue
+                score = 2                       # a framework call is solid
+                ev = {"dex_api": sorted(apis), "source_layer": "dex"}
+                perm_hit = sorted(
+                    {p for p in INPUT_SIGNATURES.get(input_id, {})
+                        .get("permissions", []) if p in (permissions or [])})
+                if perm_hit:
+                    score += 1
+                    ev["permissions"] = perm_hit
+                modality = INPUT_MODALITY.get(input_id, "unknown")
+                add_node(input_id, kind="input", modality=modality)
+                add_node(app_node, kind="module", category="app_code")
+                links.append({"source": input_id, "target": app_node,
+                              "modality": modality, "kind": "feeds",
+                              "score": score, "evidence": ev})
+                chain.append({"modality": modality, "stage": "capture",
+                              "module": app_node, "input": input_id,
+                              "source_layer": "dex",
+                              "operations": sorted(apis)})
 
     # ---- module -> model links: graduated co-location evidence.
     # Real apps rarely embed a model's exact stem in a library's strings:

@@ -80,6 +80,19 @@ class analyseDEX():
         "Request$Builder", "Retrofit", "okhttp3", "HttpURLConnection",
         ".append", "buildUpon",
     )
+    # Framework capture APIs. The presence of an *invoke* instruction
+    # targeting one of these class descriptors is direct evidence the app
+    # records audio in Java/Kotlin -- which native-.so scanning cannot see
+    # (e.g. Otter: no audio .so, records via AudioRecord in the DEX). These
+    # are class-descriptor fragments as they appear in invoke operands
+    # ("Landroid/media/AudioRecord;->startRecording..."). Framework class
+    # names survive R8/ProGuard (only app classes are renamed), so this is
+    # robust to the obfuscation that defeats app-symbol heuristics.
+    _AUDIO_CAPTURE_APIS = (
+        "Landroid/media/AudioRecord",
+        "Landroid/media/MediaRecorder",
+        "Landroid/media/projection/MediaProjection",
+    )
     # A fragment that plausibly belongs to a URL: a host-ish token, a path
     # segment, a scheme, or a query piece.
     _URL_FRAGMENT_RE = re.compile(
@@ -162,6 +175,54 @@ class analyseDEX():
         candidates (find_built_urls). The practical entry point for URL
         extraction across both styles."""
         return sorted(set(self.http_strings()) | set(self.find_built_urls()))
+
+    def audio_inputs(self):
+        """Capture inputs evidenced by framework API calls in the DEX.
+
+        Returns a dict ``{input_id: set(api names)}`` -- e.g.
+        ``{"microphone": {"AudioRecord"}}`` -- where the evidence is an
+        *invoke* instruction targeting a known capture class. This finds
+        Java/Kotlin audio capture that native-.so string scanning misses
+        (the Otter case: records via AudioRecord, ships no audio library).
+
+        The check is on the invoke operand only, so the bare class name
+        appearing as a string constant does NOT count -- a call, not a
+        mention. Best-effort and static: presence of the call path, not
+        proof it executes at runtime.
+
+        Note: MediaRecorder can also record video-with-audio, so counting
+        it toward microphone may occasionally over-claim; kept simple here
+        (a later refinement can inspect the audio-source setter).
+        """
+        found = {}
+        # Real DEX: get_methods() yields MethodIdItem (no code). The methods
+        # that carry bytecode are the EncodedMethods; instructions come from
+        # code.get_bc().get_instructions(). (A stub in tests may expose the
+        # simpler get_instructions() directly, so support both.)
+        try:
+            methods = self.dex.get_encoded_methods()
+        except AttributeError:
+            methods = self.dex.get_methods()
+        for method in methods:
+            try:
+                code = method.get_code()
+                if code is None:
+                    continue
+                if hasattr(code, "get_bc"):
+                    instructions = code.get_bc().get_instructions()
+                else:
+                    instructions = method.get_instructions()
+                for ins in instructions:
+                    if not ins.get_name().startswith("invoke"):
+                        continue
+                    out = ins.get_output() or ""
+                    for api in self._AUDIO_CAPTURE_APIS:
+                        if api in out:
+                            found.setdefault("microphone", set()).add(
+                                api.rsplit("/", 1)[-1])
+            except Exception:
+                continue
+        return found
 
     def methods(self):
         return [method.get_name() for method in self.dex.get_methods()]
