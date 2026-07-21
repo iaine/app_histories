@@ -104,6 +104,9 @@ const canon=m=>MODALITY_ALIAS[(m||"").toLowerCase()]||(m||"unknown").toLowerCase
 // ---------- normalise a record ----------
 function norm(rec){
   const chain=rec.chain||[];
+  // A flows file produced before the staged-chain restructure has no
+  // chain/modalities. Flag it rather than showing blank columns.
+  rec.__stale = (rec.analysis==="flows"||rec.graph) && !rec.chain;
   const modalities=[...new Set(chain.map(e=>canon(e.modality)).filter(Boolean))].sort();
   return {
     raw:rec,
@@ -335,6 +338,16 @@ function draw(){
     const x=c.dataset.x; HIDDEN.has(x)?HIDDEN.delete(x):HIDDEN.add(x); draw();});
 
   const panel=document.getElementById("panel"); panel.innerHTML="";
+  if(ms.some(m=>m.raw.__stale)){
+    const w=document.createElement("div");
+    w.style.cssText="border:1px solid var(--video);background:#fbeae4;"+
+      "padding:.6rem .8rem;border-radius:6px;margin-bottom:.8rem;font-size:.85rem;";
+    w.innerHTML="<b>Stale file:</b> this flows output has no <code>chain</code> "+
+      "(no chain — stale file). It was produced before the staged-modality "+
+      "restructure, so modality columns are empty. Re-run <code>flows</code> "+
+      "with the current toolkit to populate them.";
+    panel.appendChild(w);
+  }
   if(eff==="compare") renderCompare(ms,panel);
   else if(eff==="detail") renderDetail(ms[0],panel);
   else renderStaged(ms[0],panel);
