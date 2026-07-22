@@ -70,3 +70,20 @@ def test_output_names_collide_proof_and_deterministic(corpus):
     unique = [v for k, v in names.items() if k.stem == "app_00"]
     assert unique == ["app_00.metadata.jsonl"]             # plain when unique
     assert names == make_output_names(list(inputs), "metadata")  # stable
+
+
+def test_apk_dir_accepts_bundles_and_skips_split_members(tmp_path):
+    """--apk-dir must find .xapk/.apks/.apkm bundles, and must NOT list a
+    loose split as its own app: collect_all_files merges splits into the
+    base, so listing one separately would analyse a fragment and
+    double-count."""
+    from cim_app_histories.cli import collect_inputs
+    for n in ["app.apk", "bundle.xapk", "other.apks", "third.apkm",
+              "config.arm64_v8a.apk", "split_config.x86.apk"]:
+        (tmp_path / n).write_bytes(b"x")
+    found = [p.name for p in collect_inputs(None, None, str(tmp_path), False)]
+    assert "app.apk" in found
+    assert "bundle.xapk" in found
+    assert "other.apks" in found and "third.apkm" in found
+    assert "config.arm64_v8a.apk" not in found
+    assert "split_config.x86.apk" not in found

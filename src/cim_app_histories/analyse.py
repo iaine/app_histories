@@ -22,6 +22,7 @@ from pathlib import Path
 
 from .calls.multimodal_pipeline import build_flow_graph, to_sankey, looks_like_model
 from .calls.listening import trace_listening
+from .bundle import is_bundle, open_bundle
 
 
 def collect_apk_files(apk):
@@ -54,21 +55,76 @@ def gather_split_apks(apk_path):
     return sibs
 
 
-def collect_all_files(apk_path):
-    """Open an APK and gather its files, merging any sibling split APKs.
+def _merge_member_apks(member_paths):
+    """Open each chosen bundle member and merge their files, base first.
 
-    Split App Bundles put different native libraries in different splits:
-    the base may carry graphics libs while audio/ASR libs live in
-    ``config.<abi>.apk``. So we merge every sibling split that contributes
-    native libraries, not only when the base has none -- keying on
-    "base is empty" missed apps (Otter) whose base holds a few graphics
-    ``.so`` while the audio libraries sit in a split.
-
-    :returns: (apk, files, info) where info records native_libs count,
-        any splits_merged, and incomplete_base_apk (True when no native
-        libs were found anywhere and no splits could be located).
+    Only splits that add *new* native libraries contribute them, matching
+    the loose-split rule, so a language split cannot inflate the file set
+    and the same ``.so`` is never merged twice.
     """
     from androguard.core.apk import APK
+    base_apk, files, seen, merged = None, [], set(), []
+    for i, p in enumerate(member_paths):
+        try:
+            apk = APK(str(p))
+        except Exception:
+            continue
+        if base_apk is None:
+            base_apk = apk
+            for n, d in collect_apk_files(apk):
+                if n not in seen:
+                    files.append((n, d))
+                    seen.add(n)
+        else:
+            new = [(n, d) for n, d in collect_apk_files(apk) if n not in seen]
+            if new:
+                files.extend(new)
+                seen.update(n for n, _ in new)
+                merged.append(Path(p).name)
+    return base_apk, files, merged
+
+
+def collect_all_files(apk_path):
+    """Open an APK (or bundle) and gather its files, merging splits.
+
+    Two shapes of split App Bundle are handled by the same rule -- merge
+    anything that adds native libraries:
+
+    * **loose splits**: a base ``.apk`` with sibling ``config.<abi>.apk``
+      files in the same directory (a Play or device pull).
+    * **packaged bundles**: ``.xapk`` / ``.apks`` / ``.apkm``, where the
+      base and splits are zipped together. Live Transcribe's base holds
+      zero native libraries while all seven sit in ``config.arm64_v8a.apk``,
+      so without unpacking the bundle the app looks empty.
+
+    The base may itself carry some libraries (Otter's base has graphics
+    ``.so`` while its audio libraries sit in a split), so merging is not
+    conditional on the base being empty.
+
+    :returns: (apk, files, info) where info records native_libs count,
+        any splits_merged, incomplete_base_apk, and -- for a packaged
+        bundle -- a ``bundle`` provenance block.
+    """
+    from androguard.core.apk import APK
+
+    if is_bundle(apk_path):
+        import tempfile
+        # The temp dir lives for this one app's analysis and is removed
+        # after; per-task, so the HPC batch model is unaffected.
+        with tempfile.TemporaryDirectory() as td:
+            member_paths, meta = open_bundle(apk_path, td)
+            apk, files, merged = _merge_member_apks(member_paths)
+            if apk is None:
+                raise ValueError(f"no readable APK inside bundle {apk_path}")
+            info = {
+                "native_libs": sum(1 for n, _ in files if n.endswith(".so")),
+                "splits_merged": merged,
+                "bundle": meta,
+            }
+            info["incomplete_base_apk"] = (
+                info["native_libs"] == 0 and not merged)
+            return apk, files, info
+
     apk = APK(str(apk_path))
     files = collect_apk_files(apk)
     seen = {n for n, _ in files}

@@ -68,10 +68,22 @@ def collect_inputs(single, list_file, directory=None, recursive=False):
     # sorted() is load-bearing: every SLURM array task scans the
     # directory independently, so all tasks must derive the IDENTICAL
     # ordered list for round-robin sharding to partition cleanly.
+    wanted = {".apk", ".xapk", ".apks", ".apkm"}
+
+    def _is_split_member(p):
+        # A loose split sitting beside its base is not a separate app:
+        # collect_all_files merges it into the base. Listing it as its own
+        # task would analyse a fragment (often just libraries, no manifest)
+        # and double-count. Bundles are unaffected -- their members are
+        # inside the zip, not on disk.
+        n = p.name.lower()
+        return n.startswith("config.") or n.startswith("split_")
+
     return sorted(
         p for p in walk
-        if p.is_file() and p.suffix.lower() == ".apk"
+        if p.is_file() and p.suffix.lower() in wanted
         and not p.name.startswith(".")
+        and not _is_split_member(p)
     )
 
 
