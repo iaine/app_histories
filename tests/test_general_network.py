@@ -9,3 +9,9 @@ def test_address_from_host():
     nt = NetworkAddr()
     n = nt.addr_from_name(hostname)
     assert "137.205.28.41" == n
+
+def test_addresses_from_host():
+    hostname = ["warwick.ac.uk", "deepseek.com"]
+    nt = NetworkAddr()
+    n = nt.addr_from_names(hostname)
+    assert len(n) == 2
