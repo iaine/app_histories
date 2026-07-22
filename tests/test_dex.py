@@ -43,9 +43,11 @@ class _Ins:
 
 
 class _Method:
-    def __init__(self, ins): self._ins = ins
+    def __init__(self, ins, cls="Lcom/app/A;"):
+        self._ins, self._cls = ins, cls
     def get_code(self): return object() if self._ins else None
     def get_instructions(self): return self._ins
+    def get_class_name(self): return self._cls
 
 
 class _StubDex:
@@ -106,3 +108,54 @@ def test_extract_dex_inputs_unions_across_dex(monkeypatch):
     # so patch the class on the dex.dex module it looks up.
     monkeypatch.setattr(realdex, "analyseDEX", FakeAnalyse)
     assert an.extract_dex_inputs(FakeAPK()) == {"microphone": ["AudioRecord"]}
+
+
+# --- capture -> egress trace ------------------------------------------
+_CAP = "v2, Landroid/media/AudioRecord;->startRecording()V"
+_NET = "v3, Lokhttp3/OkHttpClient;->newCall(...)"
+
+
+def test_trace_egress_method_proximity_is_strongest():
+    """One method calling BOTH capture and network is the strongest
+    co-occurrence signal the scan can produce."""
+    a = _analyser([_Method([_Ins("invoke-virtual", _CAP),
+                            _Ins("invoke-virtual", _NET)])])
+    r = a.trace_capture_egress()["microphone"]
+    assert r["capture"] == ["AudioRecord"]
+    assert r["output"] == ["okhttp3"]
+    assert r["proximity"] == "method"
+
+
+def test_trace_egress_class_proximity_when_split_across_methods():
+    """Capture and egress in different methods of the SAME class is a
+    weaker but real signal."""
+    a = _analyser([
+        _Method([_Ins("invoke-virtual", _CAP)], cls="Lcom/app/Rec;"),
+        _Method([_Ins("invoke-virtual", _NET)], cls="Lcom/app/Rec;")])
+    assert a.trace_capture_egress()["microphone"]["proximity"] == "class"
+
+
+def test_trace_egress_none_when_unrelated_classes():
+    """Otter's real shape: recording and uploading live in different
+    classes, so both APIs are present but proximity is None. The result
+    must say so rather than implying a connection."""
+    a = _analyser([
+        _Method([_Ins("invoke-virtual", _CAP)], cls="Lcom/app/Rec;"),
+        _Method([_Ins("invoke-virtual", _NET)], cls="Lcom/app/Net;")])
+    r = a.trace_capture_egress()["microphone"]
+    assert r["proximity"] is None
+    assert r["output"] == ["okhttp3"]
+
+
+def test_trace_egress_empty_without_capture():
+    """No capture API means nothing to trace, even if the app networks."""
+    a = _analyser([_Method([_Ins("invoke-virtual", _NET)])])
+    assert a.trace_capture_egress() == {}
+
+
+def test_trace_egress_ignores_string_constants():
+    """As with audio_inputs: a mention is not a call."""
+    a = _analyser([_Method([
+        _Ins("const-string", "v1, 'Landroid/media/AudioRecord;'"),
+        _Ins("const-string", "v2, 'Lokhttp3/OkHttpClient;'")])])
+    assert a.trace_capture_egress() == {}

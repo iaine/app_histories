@@ -134,3 +134,37 @@ def test_no_dex_inputs_no_microphone(monkeypatch):
     patch(monkeypatch, apk)
     g = an.analyse_flows("x.apk")
     assert "microphone" not in g["summary"]["inputs"]
+
+
+def test_dex_egress_emits_output_stage_with_proximity(monkeypatch):
+    """The capture->egress finding reaches the graph as an audio output
+    stage, carrying the co-occurrence caveat in its evidence."""
+    apk = FakeAPK({"lib/arm64/libx.so": so(["scale"])},
+                  ["android.permission.RECORD_AUDIO"], [],
+                  dex_inputs={"microphone": ["AudioRecord"]})
+    patch(monkeypatch, apk)
+    monkeypatch.setattr(an, "extract_dex_egress", lambda a: {
+        "microphone": {"capture": ["AudioRecord"],
+                       "output": ["okhttp3"], "proximity": "method"}})
+    g = an.analyse_flows("x.apk")
+    out = [e for e in g["chain"]
+           if e.get("modality") == "audio" and e.get("stage") == "output"
+           and e.get("source_layer") == "dex"]
+    assert out, "expected a dex-sourced audio output stage"
+    ev = out[0]["evidence"]
+    assert ev["proximity"] == "method"
+    assert ev["relation"] == "co-occurrence"   # never claims dataflow
+    assert out[0]["operations"] == ["okhttp3"]
+
+
+def test_dex_trace_can_be_disabled(monkeypatch):
+    """The trace is a second full pass (~40s on a large app), so corpus
+    runs must be able to switch it off."""
+    apk = FakeAPK({"lib/arm64/libx.so": so(["scale"])}, [], [],
+                  dex_inputs={"microphone": ["AudioRecord"]})
+    patch(monkeypatch, apk)
+    called = []
+    monkeypatch.setattr(an, "extract_dex_egress",
+                        lambda a: called.append(1) or {})
+    an.analyse_flows("x.apk", dex_trace=False)
+    assert not called, "egress trace must not run when dex_trace=False"
