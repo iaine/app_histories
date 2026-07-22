@@ -93,6 +93,38 @@ class analyseDEX():
         "Landroid/media/MediaRecorder",
         "Landroid/media/projection/MediaProjection",
     )
+    # Network egress: the HTTP/socket paths an app uses to send data off
+    # the device. Framework classes (HttpURLConnection, Socket) cannot be
+    # renamed; the library prefixes (okhttp3, retrofit2, grpc) survive
+    # ordinary R8 because shading/renaming third-party packages is opt-in
+    # and uncommon. A fully shaded build would under-report -- the safe
+    # failure direction (we claim less, not more).
+    _EGRESS_APIS = (
+        "Lokhttp3/",
+        "Lretrofit2/",
+        "Ljava/net/HttpURLConnection",
+        "Ljavax/net/ssl/HttpsURLConnection",
+        "Ljava/net/URLConnection",
+        "Ljava/net/Socket",
+        "Lio/grpc/",
+        "Lcom/android/volley/",
+        "Lorg/apache/http/",
+        "Landroid/webkit/WebView;->loadUrl",
+    )
+    # Readable labels: the raw descriptors make poor evidence strings
+    # ("java", "io"), so name each egress mechanism explicitly.
+    _EGRESS_NAMES = {
+        "Lokhttp3/": "okhttp3",
+        "Lretrofit2/": "retrofit2",
+        "Ljava/net/HttpURLConnection": "HttpURLConnection",
+        "Ljavax/net/ssl/HttpsURLConnection": "HttpsURLConnection",
+        "Ljava/net/URLConnection": "URLConnection",
+        "Ljava/net/Socket": "Socket",
+        "Lio/grpc/": "grpc",
+        "Lcom/android/volley/": "volley",
+        "Lorg/apache/http/": "apache-http",
+        "Landroid/webkit/WebView;->loadUrl": "WebView.loadUrl",
+    }
     # A fragment that plausibly belongs to a URL: a host-ish token, a path
     # segment, a scheme, or a query piece.
     _URL_FRAGMENT_RE = re.compile(
@@ -223,6 +255,94 @@ class analyseDEX():
             except Exception:
                 continue
         return found
+
+    def trace_capture_egress(self):
+        """Evidence linking audio capture to network egress in the DEX.
+
+        Returns::
+
+            {"microphone": {"capture": [...], "output": [...],
+                            "proximity": "method" | "class" | None}}
+
+        **This is co-occurrence, not dataflow.** It reports that capture
+        and egress APIs are called from the same *method* (strongest), or
+        from the same *class* (weaker), or that both merely exist in the
+        app (weakest -- ``proximity`` is ``None``). It never claims the
+        recorded bytes are what gets sent; proving that needs register-
+        level taint analysis, which is out of scope.
+
+        Why not a call-graph walk: building androguard's ``Analysis`` on a
+        real app is prohibitive. Measured on Otter (7 dex, ~60k methods in
+        the first alone), ``Analysis`` construction took ~132s and
+        ``create_xref()`` was then killed by the OOM reaper. This scan is
+        a single pass over the same instructions ``audio_inputs`` already
+        walks, so it costs roughly one extra string comparison per invoke
+        and stays viable for batch/HPC corpora.
+        """
+        capture_apis, egress_apis = set(), set()
+        method_hits, class_hits = [], {}
+
+        try:
+            methods = self.dex.get_encoded_methods()
+        except AttributeError:
+            methods = self.dex.get_methods()
+
+        for method in methods:
+            try:
+                code = method.get_code()
+                if code is None:
+                    continue
+                if hasattr(code, "get_bc"):
+                    instructions = code.get_bc().get_instructions()
+                else:
+                    instructions = method.get_instructions()
+
+                m_cap, m_egr = set(), set()
+                for ins in instructions:
+                    if not ins.get_name().startswith("invoke"):
+                        continue
+                    out = ins.get_output() or ""
+                    for api in self._AUDIO_CAPTURE_APIS:
+                        if api in out:
+                            m_cap.add(api.rsplit("/", 1)[-1])
+                    for api in self._EGRESS_APIS:
+                        if api in out:
+                            m_egr.add(self._EGRESS_NAMES[api])
+                if not (m_cap or m_egr):
+                    continue
+                capture_apis |= m_cap
+                egress_apis |= m_egr
+                if m_cap and m_egr:
+                    method_hits.append((sorted(m_cap), sorted(m_egr)))
+
+                # class-level co-occurrence: a weaker signal than one
+                # method doing both, but stronger than "both exist
+                # somewhere in the app"
+                try:
+                    cname = method.get_class_name()
+                except Exception:
+                    cname = None
+                if cname:
+                    slot = class_hits.setdefault(cname, [set(), set()])
+                    slot[0] |= m_cap
+                    slot[1] |= m_egr
+            except Exception:
+                continue
+
+        if not capture_apis:
+            return {}
+
+        proximity = None
+        if method_hits:
+            proximity = "method"
+        elif any(c and e for c, e in class_hits.values()):
+            proximity = "class"
+
+        return {"microphone": {
+            "capture": sorted(capture_apis),
+            "output": sorted(egress_apis),
+            "proximity": proximity,
+        }}
 
     def methods(self):
         return [method.get_name() for method in self.dex.get_methods()]
