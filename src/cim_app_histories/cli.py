@@ -192,7 +192,8 @@ def task_flows(apk_path, options=None):
 
     # analyse_flows does ingestion (split merge + dex urls); for profiling
     # we still want stage timings, so build via the shared path and attach.
-    graph = analyse_flows(apk_path, dx=dx, profiler=profiler)
+    graph = analyse_flows(apk_path, dx=dx, profiler=profiler,
+                          dex_trace=not options.get("no_dex_trace", False))
     rec = dict(base_record(apk_path, "flows"),
                app=graph.get("app"),
                pkg=graph.get("pkg"),
@@ -356,6 +357,10 @@ def main(argv=None):
     s.add_argument("--profile", action="store_true",
                    help="record per-stage timing and memory into each "
                         "output record (adds tracemalloc overhead)")
+    s.add_argument("--no-dex-trace", action="store_true",
+                   help="skip the capture->egress DEX trace (a second "
+                        "pass over every method, ~40s on a large app); "
+                        "use for corpus runs that only need inputs")
 
     args = parser.parse_args(argv)
 
@@ -369,7 +374,8 @@ def main(argv=None):
         return 0
 
     options = {"trace": getattr(args, "trace", False),
-               "profile": getattr(args, "profile", False)}
+               "profile": getattr(args, "profile", False),
+               "no_dex_trace": getattr(args, "no_dex_trace", False)}
     rc = run_batch(args.command, inputs, args.outdir, args.workers,
                    args.force, options, out_names)
 

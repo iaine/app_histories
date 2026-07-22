@@ -345,7 +345,8 @@ def trace_strengthens(traced, input_id, module_name, vendor):
 # Graph construction
 # ---------------------------------------------------------------------------
 def build_flow_graph(files, permissions=None, dx=None, config=None,
-                     profiler=None, dex_urls=None, dex_inputs=None):
+                     profiler=None, dex_urls=None, dex_inputs=None,
+                     dex_egress=None):
     """Build the input -> module -> onward graph for one app.
 
     :param files: iterable of (name, bytes) -- native libs and model assets
@@ -542,6 +543,30 @@ def build_flow_graph(files, permissions=None, dx=None, config=None,
                               "module": app_node, "input": input_id,
                               "source_layer": "dex",
                               "operations": sorted(apis)})
+
+    # ---- capture -> egress (dex): does the recording path reach the
+    # network? This is CO-OCCURRENCE, not dataflow: "method" means one
+    # method calls both a capture and a network API, "class" means the
+    # same class does, None means both merely exist in the app. It never
+    # asserts the recorded bytes are what is sent -- that needs taint
+    # analysis. The proximity is carried in the evidence so a reader can
+    # weigh it rather than taking a bare link at face value.
+    with profiler.stage("dex_egress"):
+        for input_id, ev in (dex_egress or {}).items():
+            if input_id not in wanted or not ev.get("output"):
+                continue
+            proximity = ev.get("proximity")
+            modality = INPUT_MODALITY.get(input_id, "unknown")
+            add_node("app_code", kind="module", category="app_code")
+            chain.append({
+                "modality": modality, "stage": "output",
+                "module": "app_code", "input": input_id,
+                "source_layer": "dex",
+                "operations": sorted(ev["output"]),
+                "evidence": {"proximity": proximity,
+                             "relation": "co-occurrence",
+                             "capture": sorted(ev.get("capture", []))},
+            })
 
     # ---- module -> model links: graduated co-location evidence.
     # Real apps rarely embed a model's exact stem in a library's strings:

@@ -153,6 +153,40 @@ def collect_all_files(apk_path):
     return apk, files, info
 
 
+def extract_dex_egress(apk):
+    """Capture-to-egress evidence from the DEX, unioned across dex files.
+
+    Returns ``{input_id: {"capture": [...], "output": [...],
+    "proximity": "method"|"class"|None}}``.
+
+    **Co-occurrence, not dataflow**: proximity records whether capture and
+    network APIs are called in the same method (strongest), the same class
+    (weaker), or merely both present (None). It never asserts the recorded
+    audio is what is transmitted.
+    """
+    from .dex.dex import analyseDEX
+    rank = {None: 0, "class": 1, "method": 2}
+    merged = {}
+    try:
+        for dex in apk.get_all_dex():
+            try:
+                for k, v in analyseDEX(dex).trace_capture_egress().items():
+                    slot = merged.setdefault(
+                        k, {"capture": set(), "output": set(),
+                            "proximity": None})
+                    slot["capture"].update(v.get("capture", []))
+                    slot["output"].update(v.get("output", []))
+                    if rank[v.get("proximity")] > rank[slot["proximity"]]:
+                        slot["proximity"] = v["proximity"]
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return {k: {"capture": sorted(v["capture"]),
+                "output": sorted(v["output"]),
+                "proximity": v["proximity"]} for k, v in merged.items()}
+
+
 def extract_dex_urls(apk):
     """All http(s) URLs in the app's DEX: whole-string literals plus URLs
     assembled at runtime from fragments (StringBuilder, Uri.Builder,
@@ -197,7 +231,8 @@ def extract_dex_inputs(apk):
 # ---------------------------------------------------------------------------
 # Public one-call wrappers (notebook / script entry points)
 # ---------------------------------------------------------------------------
-def analyse_flows(apk_path, dx=None, config=None, profiler=None):
+def analyse_flows(apk_path, dx=None, config=None, profiler=None,
+                  dex_trace=True):
     """Build the input -> module -> endpoint flow graph for one APK file.
 
     Does the full ingestion the CLI does: split-APK merging and DEX URL
@@ -209,13 +244,22 @@ def analyse_flows(apk_path, dx=None, config=None, profiler=None):
     :param dx: optional androguard Analysis to enable method tracing
     :param config: {"inputs": [...]} to restrict inputs
     :param profiler: optional StageProfiler for per-stage timing/memory
+    :param dex_trace: run the capture->egress DEX trace (default True).
+        Costs a second pass over every method (~40s on a large app), so
+        corpus runs that only need inputs can pass False.
     """
     apk, files, info = collect_all_files(apk_path)
     dex_urls = extract_dex_urls(apk)
     dex_inputs = extract_dex_inputs(apk)
+    # The egress trace is a second full pass over every method's invokes,
+    # ~40s on a large app (Otter). Corpus runs that only need inputs can
+    # switch it off; it is on by default because capture->network is the
+    # machine-listening finding the flows graph otherwise cannot state.
+    dex_egress = extract_dex_egress(apk) if dex_trace else {}
     graph = build_flow_graph(files, permissions=apk.get_permissions(),
                              dx=dx, config=config, dex_urls=dex_urls,
-                             dex_inputs=dex_inputs, profiler=profiler)
+                             dex_inputs=dex_inputs, dex_egress=dex_egress,
+                             profiler=profiler)
     graph["summary"] = {**graph["summary"], **info}
     pkg = apk.get_package()
     version = apk.get_androidversion_name()
