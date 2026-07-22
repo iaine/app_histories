@@ -27,6 +27,7 @@ From: python:3.12-slim
     apt-get update && apt-get install -y --no-install-recommends git \
         && rm -rf /var/lib/apt/lists/*
     pip install --no-cache-dir --upgrade pip
+    apt-get install libxml2-dev libxslt2-dev
     # Install the toolkit at a fixed ref. Swap for `pip install /opt/src`
     # with a %files section if building from a local checkout.
     pip install --no-cache-dir \
