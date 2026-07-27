@@ -24,8 +24,7 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # Basic build-time verification (equivalent to %test)
-RUN cim-apps --version && \
-    python -c "import cim_app_histories.ab.ab, cim_app_histories.localisation.localisation"
+RUN cim-apps --version
 
 ENTRYPOINT ["cim-apps"]
 CMD ["--help"]

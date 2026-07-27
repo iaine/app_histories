@@ -2,13 +2,12 @@ name: Build and publish Docker image
 
 on:
   workflow_dispatch:
-  pull_request:
+  #pull_request:
+  push:
     branches: ["main","dev"]
-    types: [closed]
     paths:
       - '.github/workflows/build-docker.yml'
       - 'Dockerfile'
-
 
 env:
   REGISTRY: ghcr.io
@@ -23,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Extract version number
         run: |
@@ -48,11 +47,18 @@ jobs:
             type=semver,pattern={{ env.VERSION }}
             type=sha
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
+          platforms: linux/amd64,linux/ppc64le
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           build-args: |
             CONTAINER_VERSION=${{ env.VERSION }}
