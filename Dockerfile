@@ -14,6 +14,10 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
         git \
+        gcc \
+        g++ \
+        build-essential \
+        pkg-config \
         libxml2-dev \
         libxslt1-dev; \
     pip install --no-cache-dir --upgrade pip; \
