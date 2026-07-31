@@ -145,7 +145,7 @@ def toolkit_version():
 
 
 from .analyse import (collect_all_files, extract_dex_urls,
-                      analyse_flows, analyse_listening)
+                      analyse_flows, analyse_listening, analyse_acr)
 
 
 def base_record(input_path, kind):
@@ -231,11 +231,22 @@ def task_listening(apk_path, options=None):
     return [rec]
 
 
+def task_acr(apk_path, options=None):
+    """Detect automatic content recognition (ACR) -- Shazam-style audio
+    fingerprinting -- in one app: SDK packages, fingerprint native libs,
+    recognition endpoints, capture+egress behaviour and CJK feature
+    keywords, combined into a graded confidence."""
+    result = analyse_acr(apk_path)
+    rec = dict(base_record(apk_path, "acr"), **result)
+    return [rec]
+
+
 TASKS = {
     "classify": task_classify,
     "flows": task_flows,
     "metadata": task_metadata,
     "listening": task_listening,
+    "acr": task_acr,
 }
 
 
@@ -347,6 +358,13 @@ def main(argv=None):
                              "through capture/dsp/features/inference to "
                              "models and endpoints (one .json per app)")
     add_common(s, "--apk", "path to one .apk file")
+
+    s = subs.add_parser("acr",
+                        help="detect automatic content recognition "
+                             "(Shazam-style audio fingerprinting): SDKs, "
+                             "fingerprint libs, endpoints, capture+egress, "
+                             "graded high/medium/low/none")
+    add_common(s, "--apk", "path to one .apk/.xapk file")
 
     s = subs.add_parser("flows",
                         help="trace inputs -> AI modules -> onward processes")

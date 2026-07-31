@@ -282,7 +282,164 @@ def analyse_flows(apk_path, dx=None, config=None, profiler=None,
     return graph
 
 
+def _collect_dex_classes_and_strings(apk):
+    """Gather class descriptors and string constants across every dex,
+    for the ACR SDK-package and CJK-keyword detectors. One pass, bounded
+    to string enumeration (cheap -- see the egress-trace perf note)."""
+    from .dex.dex import DEX
+    classes, strings = set(), set()
+    try:
+        for dex in apk.get_all_dex():
+            try:
+                d = DEX(dex)
+                try:
+                    classes.update(d.get_classes_names())
+                except Exception:
+                    pass
+                try:
+                    for s in d.get_strings():
+                        strings.add(s if isinstance(s, str)
+                                    else s.decode("utf-8", "ignore"))
+                except Exception:
+                    pass
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return classes, strings
+
+
 def analyse_listening(apk_path):
+    """Trace audio inputs -> chain -> models/endpoints for one APK file.
+
+    Same ingestion as analyse_flows (split merging, DEX URLs including
+    runtime-assembled audio backends). Returns the listening result dict;
+    adds a ``warning`` key when the input looks like an incomplete base.
+
+    :param apk_path: path to a .apk file
+    """
+    apk, files, info = collect_all_files(apk_path)
+    dex_urls = extract_dex_urls(apk)
+    result = trace_listening(files, permissions=apk.get_permissions(),
+                             dex_urls=dex_urls)
+    result["summary"] = {**result.get("summary", {}), **info}
+    result["app"] = {"pkg": apk.get_package(),
+                     "version": apk.get_androidversion_name()}
+    if info["incomplete_base_apk"]:
+        result["warning"] = ("no native libraries found; likely a split App "
+                             "Bundle base APK. Provide the universal APK or "
+                             "split_config.*.apk files for complete analysis.")
+    return result
+
+
+def analyse_acr(apk_path):
+    """Detect automatic content recognition (ACR) capability in one APK.
+
+    Gathers four independent signals -- SDK package, fingerprinting native
+    library, recognition endpoint, and capture+egress behaviour -- plus a
+    CJK feature-keyword tier, and grades a confidence. See
+    :mod:`cim_app_histories.acr.acr` for the signal and grading semantics.
+
+    Same ingestion as the other workflows (bundle/split merge), so
+    ``.xapk`` bundles and split APKs work transparently.
+
+    Performance: a large app (NetEase, 22 dex, ~1.1M strings) costs ~80s
+    for a single pass over its DEX files. This runs the SDK, keyword,
+    endpoint, capture and egress detectors on **one** parse per dex rather
+    than four, since four separate passes made the workflow unusable on
+    real apps.
+
+    :param apk_path: path to a .apk / .xapk / .apks / .apkm file
+    """
+    from .acr import acr as acr_mod
+    from .dex.dex import analyseDEX, DEX
+
+    apk, files, info = collect_all_files(apk_path)
+    lib_names = [n for n, _ in files if n.endswith(".so")]
+    perms = apk.get_permissions()
+    sigs = acr_mod.load_signatures()
+
+    classes, strings, urls = set(), set(), set()
+    capture_apis, egress = set(), {}
+    for dex in apk.get_all_dex():
+        try:
+            ad = analyseDEX(dex)
+        except Exception:
+            continue
+        # capture + egress reuse the analyseDEX passes
+        try:
+            for v in ad.audio_inputs().values():
+                capture_apis.update(v)
+        except Exception:
+            pass
+        try:
+            urls.update(ad.all_urls())
+        except Exception:
+            pass
+        try:
+            for k, v in ad.trace_capture_egress().items():
+                slot = egress.setdefault(k, {"output": set()})
+                slot["output"].update(v.get("output", []))
+        except Exception:
+            pass
+        # classes + strings for SDK-package and keyword detectors
+        try:
+            d = ad.dex if hasattr(ad, "dex") else DEX(dex)
+            try:
+                classes.update(d.get_classes_names())
+            except Exception:
+                pass
+            try:
+                for s in d.get_strings():
+                    strings.add(s if isinstance(s, str)
+                                else s.decode("utf-8", "ignore"))
+            except Exception:
+                pass
+        except Exception:
+            continue
+
+    sdks = acr_mod.find_acr_sdks(classes)
+    native = acr_mod.find_acr_native(lib_names, sigs)
+    endpoints = acr_mod.find_acr_endpoints(sorted(urls), sigs)
+    keywords = acr_mod.find_acr_keywords(strings, sigs)
+
+    mic_capture = bool(capture_apis)
+    egress_apis = sorted({a for v in egress.values()
+                          for a in v.get("output", [])})
+    capture_egress = bool(mic_capture and egress_apis)
+
+    acr_perms = sorted(p for p in perms if any(
+        k in p for k in ("RECORD_AUDIO", "FOREGROUND_SERVICE_MICROPHONE",
+                         "INTERNET")))
+
+    confidence = acr_mod.grade_confidence(
+        sdk=bool(sdks), native=native, endpoint=endpoints,
+        capture_egress=capture_egress, keyword=keywords)
+
+    return {
+        "app": {"pkg": apk.get_package(),
+                "version": apk.get_androidversion_name()},
+        "acr": {
+            "confidence": confidence,
+            "vendors": sdks,
+            "native_libs": native,
+            "endpoints": endpoints,
+            "keywords": keywords,
+            "capture": sorted(capture_apis),
+            "egress": egress_apis,
+            "permissions": acr_perms,
+            "evidence": {
+                "sdk_package": bool(sdks),
+                "native_lib": bool(native),
+                "acr_endpoint": bool(endpoints),
+                "capture_and_egress": capture_egress,
+                "cjk_keyword": bool(keywords),
+            },
+        },
+        "summary": info,
+    }
+
+
     """Trace audio inputs -> chain -> models/endpoints for one APK file.
 
     Same ingestion as analyse_flows (split merging, DEX URLs including

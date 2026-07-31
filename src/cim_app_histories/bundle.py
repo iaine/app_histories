@@ -75,10 +75,14 @@ def is_bundle(path):
     if p.suffix.lower() != ".apk":
         return False
     # An APK is itself a zip, so "is a zip" is not enough -- a bundle is a
-    # zip whose *members* are APKs.
+    # zip whose *top-level* members are APKs. A plain app can carry .apk
+    # files under assets/ (QQ Music ships assets/MidasEmptyRes1.apk and
+    # plugin APKs); those are payload, not split members, and must not make
+    # the app look like a bundle. Split members always sit at the zip root.
     try:
         with zipfile.ZipFile(p) as z:
-            return any(n.lower().endswith(".apk") for n in z.namelist())
+            return any(n.lower().endswith(".apk") and "/" not in n
+                       for n in z.namelist())
     except (zipfile.BadZipFile, OSError):
         return False
 
@@ -186,8 +190,8 @@ def open_bundle(path, dest_dir, abi_policy="preferred", keep_density=False):
     with zipfile.ZipFile(path) as z:
         manifest = read_manifest(z)
         for n in z.namelist():
-            if not n.lower().endswith(".apk"):
-                continue          # skip .obb asset packs, icons, manifests
+            if not n.lower().endswith(".apk") or "/" in n:
+                continue          # skip nested asset APKs, .obb, icons, manifests
             members[n] = classify_split(n)
 
         # A bundle whose members have no recognisable base (APKPure names
