@@ -5,7 +5,7 @@ workflows. Every workflow shares the same input and batching options,
 so anything you learn about running one applies to the others.
 
 ```
-cim-apps {metadata, classify, flows} [input] --outdir DIR [options]
+cim-apps {metadata, classify, flows, listening, acr} [input] --outdir DIR [options]
 ```
 
 ## Choosing inputs
@@ -89,7 +89,7 @@ the [methods](../methods.md) page for how thresholds are set.
 ## flows
 
 ```bash
-cim-apps flows --apk app.apk --outdir results/ [--trace] [--profile] [--no-dex-trace]
+cim-apps flows --apk app.apk --outdir results/ [--trace] [--profile]
 ```
 
 Builds a graph per app of how data may flow: device inputs (microphone,
@@ -106,11 +106,6 @@ slower; the traced chains are summarised into evidence, never emitted).
 `--profile` embeds per-stage timing and memory into each record — see
 the [profiling guide](../dev/profiling.md).
 
-`--no-dex-trace` skips the capture-to-egress DEX trace, which is a second
-pass over every method (~40s on a large app). Audio capture detection still
-runs. See [DEX tracing](dex-tracing.md) for what the trace finds and how to
-read the `proximity` field.
-
 ## listening
 
 ```bash
@@ -125,6 +120,21 @@ bins, codecs) and recording where they change between stages. Outputs
 one pretty-printed `.json` document per app rather than JSONL. See the
 [listening guide](listening.md) for the stage model and worked
 examples.
+
+## acr
+
+```bash
+cim-apps acr --apk app.apk --outdir results/
+cim-apps acr --apk-dir apps/ --outdir results/
+```
+
+Detects automatic content recognition — Shazam-style audio
+fingerprinting — and grades a confidence (`high`/`medium`/`low`/`none`)
+from four independent signals: named ACR SDK packages, fingerprinting
+native libraries, recognition endpoints, and capture+egress behaviour,
+plus a CJK "听歌识曲" feature-keyword tier used as corroboration only.
+One JSONL record per app. See the [ACR guide](acr.md) for how to read
+the confidence grade and extend the vendor vocabulary.
 
 ## Recipes
 
