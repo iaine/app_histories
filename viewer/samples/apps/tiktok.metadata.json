@@ -1,0 +1,58 @@
+{
+ "input": "com.tiktok.app_1.0.apk",
+ "analysis": "metadata",
+ "toolkit_version": "0.0.2",
+ "applicationname": "App",
+ "pkg": "com.tiktok.app",
+ "version_code": "100",
+ "android_name": "1.0",
+ "permissions": "android.permission.INTERNET;android.permission.RECORD_AUDIO;android.permission.CAMERA;android.permission.ACCESS_FINE_LOCATION;android.permission.READ_CONTACTS",
+ "activities": "MainActivity",
+ "intents": "android.intent.action.MAIN",
+ "localisation": [
+  [
+   "en",
+   "",
+   ""
+  ],
+  [
+   "zh",
+   "",
+   ""
+  ],
+  [
+   "es",
+   "",
+   ""
+  ],
+  [
+   "ja",
+   "",
+   ""
+  ],
+  [
+   "ko",
+   "",
+   ""
+  ],
+  [
+   "pt",
+   "",
+   ""
+  ],
+  [
+   "ar",
+   "",
+   ""
+  ],
+  [
+   "id",
+   "",
+   ""
+  ]
+ ],
+ "ab": [
+  "com.bytedance.applog",
+  "com.optimizely.ab"
+ ]
+}

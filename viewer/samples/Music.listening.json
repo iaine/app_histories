@@ -1,0 +1,112 @@
+{
+  "app": {
+    "pkg": "com.demo.music",
+    "version": "4.0"
+  },
+  "sources": {
+    "network_stream": {
+      "modules": [
+        "lib/arm64/libplayer.so"
+      ],
+      "evidence": {
+        "lib/arm64/libplayer.so": {
+          "keywords": [
+            "exoplayer",
+            "hls",
+            "m3u8"
+          ],
+          "apis": [],
+          "permissions": [
+            "android.permission.INTERNET"
+          ]
+        }
+      }
+    }
+  },
+  "chain": [
+    {
+      "stage": "dsp",
+      "module": "lib/arm64/libplayer.so",
+      "vendor": "unknown",
+      "operations": [
+        "loudness",
+        "lufs"
+      ],
+      "parameters": {
+        "codecs": [
+          "aac",
+          "opus"
+        ]
+      }
+    },
+    {
+      "stage": "features",
+      "module": "lib/arm64/libplayer.so",
+      "vendor": "unknown",
+      "operations": [
+        "chroma"
+      ],
+      "parameters": {
+        "codecs": [
+          "aac",
+          "opus"
+        ]
+      }
+    },
+    {
+      "stage": "inference",
+      "module": "lib/arm64/libplayer.so",
+      "vendor": "unknown",
+      "operations": [
+        "embedding",
+        "interpreter"
+      ],
+      "parameters": {
+        "codecs": [
+          "aac",
+          "opus"
+        ]
+      },
+      "task": "music_analysis"
+    },
+    {
+      "stage": "output",
+      "module": "lib/arm64/libplayer.so",
+      "vendor": "unknown",
+      "operations": [
+        "next_track",
+        "playlist",
+        "recommend"
+      ]
+    },
+    {
+      "stage": "output",
+      "module": "lib/arm64/libplayer.so",
+      "kind": "endpoint",
+      "target": "api.music.example.com/v1/recommendations/next",
+      "categories": [
+        "api",
+        "recommendation"
+      ]
+    }
+  ],
+  "parameter_transitions": [],
+  "summary": {
+    "sources": [
+      "network_stream"
+    ],
+    "stages_present": [
+      "dsp",
+      "features",
+      "inference",
+      "output"
+    ],
+    "inference_tasks": [
+      "music_analysis"
+    ],
+    "endpoints": [
+      "api.music.example.com/v1/recommendations/next"
+    ],
+    "audio_modules": 1
+  }
+}

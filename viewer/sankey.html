@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App Histories — flow viewer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-sankey/0.12.3/d3-sankey.min.js"></script>
+<style>
+  :root{
+    --ink:#15140f; --paper:#f4f1e8; --line:#ccc5b0; --card:#fbfaf5;
+    /* modality palette — colour carries the input type */
+    --audio:#2f6f6a; --video:#b5562f; --image:#c08a2e; --text:#5b6cb0;
+    --sensor:#7a8b3f; --location:#8a4f9e; --network:#3a7d9c; --vision:#a8452f; --bluetooth:#4a5fa5;
+    --unknown:#9a927d;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;}
+  header{padding:1.3rem 1.6rem .9rem;border-bottom:1px solid var(--line);}
+  h1{margin:0;font-size:1.4rem;font-weight:600;letter-spacing:-.01em;}
+  .sub{margin:.25rem 0 0;font-size:.88rem;opacity:.7;font-style:italic;}
+  main{padding:1.1rem 1.6rem 2.4rem;}
+  #drop{border:1.5px dashed var(--line);border-radius:6px;padding:2.2rem 1rem;
+    text-align:center;cursor:pointer;background:var(--card);}
+  #drop.over{border-color:var(--audio);background:#f0ecdf;}
+  #drop p{margin:.3rem 0;} .hint{font-size:.82rem;opacity:.6;}
+  .bar{display:flex;flex-wrap:wrap;gap:.9rem;align-items:center;margin:.5rem 0 .8rem;}
+  .modes{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  .modes button{border:0;background:var(--card);padding:.38rem .75rem;cursor:pointer;
+    font-family:inherit;font-size:.84rem;color:var(--ink);}
+  .modes button.on{background:var(--ink);color:var(--paper);}
+  .modes button:not(:last-child){border-right:1px solid var(--line);}
+  .btn{font-family:inherit;font-size:.84rem;padding:.34rem .55rem;border:1px solid var(--line);
+    border-radius:5px;background:var(--card);color:var(--ink);cursor:pointer;}
+  .count{opacity:.6;font-size:.84rem;}
+  .app{font-weight:600;}
+  .filters{display:flex;flex-wrap:wrap;gap:.4rem;margin:.2rem 0 1rem;}
+  .chip{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .55rem;
+    border:1px solid var(--line);border-radius:14px;font-size:.8rem;cursor:pointer;
+    background:var(--card);user-select:none;}
+  .chip i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .chip.off{opacity:.35;text-decoration:line-through;}
+  svg{width:100%;height:auto;display:block;}
+  .stagehdr{font-size:11px;fill:var(--ink);opacity:.75;font-weight:600;
+    text-transform:uppercase;letter-spacing:.06em;}
+  .node rect{stroke:rgba(0,0,0,.2);}
+  .node text{font-size:10.5px;fill:var(--ink);}
+  .link{fill:none;stroke-opacity:.3;}
+  .link:hover{stroke-opacity:.6;}
+  table{border-collapse:collapse;width:100%;font-size:.82rem;margin-top:.4rem;}
+  th,td{border:1px solid var(--line);padding:.32rem .5rem;text-align:left;vertical-align:top;}
+  th{background:#ece7d8;font-weight:600;}
+  td.mono{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;}
+  .tag{display:inline-block;margin:1px 3px 1px 0;padding:.04rem .38rem;border-radius:10px;
+    font-size:.76rem;border:1px solid var(--line);background:var(--card);}
+  h2{font-size:1rem;font-weight:600;margin:1.3rem 0 .4rem;}
+  .empty{opacity:.6;font-style:italic;}
+  .note{font-size:.78rem;opacity:.65;margin:.3rem 0 0;}
+  footer{font-size:.76rem;opacity:.55;padding:0 1.6rem 1.4rem;}
+  code{background:#e8e3d4;padding:.05rem .3rem;border-radius:3px;font-size:.82em;}
+</style>
+</head>
+<body>
+<header>
+  <h1>App Histories — flow viewer</h1>
+  <p class="sub">Staged pipeline view of <code>flows</code> and <code>listening</code> output</p>
+</header>
+<main>
+  <div id="drop">
+    <p><b>Drop one or more JSON files here</b> or click to choose</p>
+    <p class="hint"><code>*.flows.jsonl</code> or <code>*.listening.json</code> — one app = pipeline, many = comparison</p>
+    <input type="file" id="file" accept=".json,.jsonl" multiple hidden>
+  </div>
+  <div id="view" hidden>
+    <div class="bar">
+      <span class="app" id="appname"></span>
+      <div class="modes" id="modes"></div>
+      <span class="count" id="count"></span>
+      <span style="flex:1"></span>
+      <button class="btn" id="reset">Clear</button>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div id="panel"></div>
+  </div>
+</main>
+<footer>
+  Static-analysis evidence: stages and parameters are vocabulary observed in
+  binary strings, not measured runtime dataflow. Stage attribution uses
+  proximity in the string table — treat as candidates to audit.
+</footer>
+<script>
+const STAGE_ORDER=["capture","preprocess","features","inference","output"];
+const cvar=k=>getComputedStyle(document.documentElement).getPropertyValue("--"+k).trim();
+const colourFor=m=>cvar(m)||cvar("unknown");
+let RECORDS=[], MODE="auto", HIDDEN=new Set();
+
+// Older result files (before modality reconciliation) may carry the model
+// classifier's own labels. Fold them onto the canonical set so a file
+// produced by either version renders the same way.
+const MODALITY_ALIAS={vision:"image", nlp:"text", speech:"audio", voice:"audio"};
+const canon=m=>MODALITY_ALIAS[(m||"").toLowerCase()]||(m||"unknown").toLowerCase();
+
+// ---------- normalise a record ----------
+function norm(rec){
+  const chain=rec.chain||[];
+  // A flows file produced before the staged-chain restructure has no
+  // chain/modalities. Flag it rather than showing blank columns.
+  rec.__stale = (rec.analysis==="flows"||rec.graph) && !rec.chain;
+  const modalities=[...new Set(chain.map(e=>canon(e.modality)).filter(Boolean))].sort();
+  return {
+    raw:rec,
+    pkg:(rec.app&&rec.app.pkg)||rec.input||"app",
+    version:(rec.app&&rec.app.version)||"",
+    type:rec.analysis||(rec.chain?"flows":"unknown"),
+    chain, modalities,
+    transitions:rec.parameter_transitions||[],
+    summary:rec.summary||{},
+    graph:rec.graph||{nodes:[],links:[]},
+  };
+}
+
+// ---------- aggregate chain -> staged sankey ----------
+// Nodes are (modality, stage) buckets, NOT raw modules: TikTok has 4600
+// chain entries over 500 modules; plotting them raw is unreadable. Each
+// bucket carries its module count and operations for the tooltip.
+function stagedModel(m){
+  const buckets=new Map();   // key: modality|stage
+  const key=(mod,st)=>mod+"|"+st;
+  for(const e of m.chain){
+    const emod=canon(e.modality);
+    if(HIDDEN.has(emod)) continue;
+    const st=e.stage; if(!STAGE_ORDER.includes(st)) continue;
+    const k=key(emod,st);
+    let b=buckets.get(k);
+    if(!b){b={modality:emod,stage:st,modules:new Set(),ops:new Set(),
+              models:new Set(),endpoints:new Set(),params:{}};buckets.set(k,b);}
+    if(e.module) b.modules.add(e.module);
+    (e.operations||[]).forEach(o=>b.ops.add(o));
+    if(e.model) b.models.add(e.model);
+    if(e.endpoint) b.endpoints.add(e.endpoint);
+    for(const [p,v] of Object.entries(e.parameters||{}))
+      (b.params[p]=b.params[p]||new Set()).add(...[].concat(v));
+  }
+  // links: consecutive NON-EMPTY stages within a modality (skip empties)
+  const links=[];
+  const byMod={};
+  for(const b of buckets.values()) (byMod[b.modality]=byMod[b.modality]||[]).push(b);
+  for(const [mod,list] of Object.entries(byMod)){
+    const present=STAGE_ORDER.filter(s=>list.some(b=>b.stage===s));
+    for(let i=0;i<present.length-1;i++){
+      const a=list.find(b=>b.stage===present[i]), z=list.find(b=>b.stage===present[i+1]);
+      // weight: how many modules carry through (min of the two ends)
+      const w=Math.max(1,Math.min(a.modules.size||1,z.modules.size||1));
+      links.push({source:mod+"|"+present[i],target:mod+"|"+present[i+1],
+                  value:w,modality:mod});
+    }
+  }
+  return {buckets,links,stagesPresent:STAGE_ORDER.filter(
+    s=>[...buckets.values()].some(b=>b.stage===s))};
+}
+
+function label(b){
+  const n=b.modules.size;
+  return b.modality+" · "+b.stage+(n?` (${n})`:"");
+}
+
+function renderStaged(m,mount){
+  const model=stagedModel(m);
+  const bs=[...model.buckets.values()];
+  if(!bs.length){mount.innerHTML='<p class="empty">No chain entries to show (try re-enabling modalities).</p>';return;}
+
+  // Only stages actually present get a column.
+  const stages=model.stagesPresent;
+  const width=Math.min(1000,document.querySelector("main").clientWidth);
+  const top=30, padY=10, nodeW=15, gapY=9;
+  const colW=(width-nodeW)/Math.max(1,stages.length-1||1);
+  const colX=i=>stages.length===1?(width-nodeW)/2:i*colW;
+
+  // Stack nodes inside their OWN stage column. We lay this out ourselves
+  // rather than using d3-sankey's automatic depths: sankey packs a node
+  // into the earliest column its links allow, so a modality that skips a
+  // stage (location has no inference) slides left, and a modality with a
+  // single unlinked node (network has only output) lands in column 0 —
+  // next to the inputs. Explicit columns keep every block under its real
+  // stage heading.
+  const byStage={};
+  for(const b of bs) (byStage[b.stage]=byStage[b.stage]||[]).push(b);
+  for(const k in byStage) byStage[k].sort((a,z)=>a.modality.localeCompare(z.modality));
+
+  const maxRows=Math.max(...stages.map(s=>byStage[s].length),1);
+  const rowH=34, height=Math.max(220, top+padY*2+maxRows*(rowH+gapY));
+
+  // scale block height by module count (evidence weight), floor for reading
+  const maxMods=Math.max(1,...bs.map(b=>b.modules.size||1));
+  const hOf=b=>Math.max(12, Math.min(rowH, 12+(rowH-12)*((b.modules.size||1)/maxMods)));
+
+  const pos=new Map();     // key -> {x,y,h}
+  stages.forEach((st,i)=>{
+    let y=top+padY;
+    for(const b of byStage[st]){
+      const h=hOf(b);
+      pos.set(b.modality+"|"+b.stage,{x:colX(i),y,h,b});
+      y+=h+gapY;
+    }
+  });
+
+  const svg=d3.select(mount).append("svg").attr("viewBox",`0 0 ${width} ${height}`);
+
+  // stage column headings
+  svg.append("g").selectAll("text").data(stages).join("text")
+    .attr("class","stagehdr").attr("x",(s,i)=>colX(i)+nodeW/2)
+    .attr("y",top-10).attr("text-anchor",(s,i)=>i===0?"start":(i===stages.length-1?"end":"middle"))
+    .text(s=>s);
+
+  // links: curved ribbons between consecutive present stages of a modality
+  const link=d3.linkHorizontal().x(d=>d[0]).y(d=>d[1]);
+  svg.append("g").selectAll("path").data(model.links).join("path")
+    .attr("class","link")
+    .attr("d",l=>{
+      const a=pos.get(l.source), z=pos.get(l.target);
+      if(!a||!z) return null;
+      return link({source:[a.x+nodeW,a.y+a.h/2],target:[z.x,z.y+z.h/2]});
+    })
+    .attr("stroke",l=>colourFor(l.modality))
+    .attr("stroke-width",l=>{
+      const a=pos.get(l.source),z=pos.get(l.target);
+      return Math.max(1.5,Math.min(a?a.h:2,z?z.h:2)*0.6);
+    })
+    .append("title").text(l=>`${l.modality}: ${l.source.split("|")[1]} → ${l.target.split("|")[1]}`);
+
+  // blocks
+  const g=svg.append("g").selectAll("g").data([...pos.values()]).join("g").attr("class","node");
+  g.append("rect").attr("x",d=>d.x).attr("y",d=>d.y)
+    .attr("width",nodeW).attr("height",d=>d.h).attr("rx",2)
+    .attr("fill",d=>colourFor(d.b.modality))
+    .append("title").text(d=>{
+      const b=d.b, L=[`${b.modality} · ${b.stage}`];
+      if(b.modules.size) L.push(`${b.modules.size} module(s)`);
+      if(b.ops.size) L.push("ops: "+[...b.ops].slice(0,8).join(", "));
+      if(b.models.size) L.push("models: "+[...b.models].slice(0,4).map(s=>s.split("/").pop()).join(", "));
+      if(b.endpoints.size) L.push(`${b.endpoints.size} endpoint(s)`);
+      const ps=Object.entries(b.params).slice(0,4)
+        .map(([k,v])=>`${k}=${[...v].slice(0,4).join("/")}`);
+      if(ps.length) L.push(ps.join("  "));
+      return L.join("\n");
+    });
+  g.append("text")
+    .attr("x",d=>d.x+nodeW+4).attr("y",d=>d.y+d.h/2).attr("dy","0.35em")
+    .text(d=>`${d.b.modality}${d.b.modules.size?" ("+d.b.modules.size+")":""}`)
+    .attr("fill",d=>colourFor(d.b.modality))
+    .style("font-size","10px");
+
+  // parameter transitions, coloured by modality
+  if(m.transitions.length){
+    const t=d3.select(mount).append("div");
+    t.append("h2").text("Parameter transitions");
+    t.append("div").html(m.transitions.map(x=>
+      `<span class="tag" style="border-color:${colourFor(x.modality)}">`+
+      `<b>${x.modality}</b> ${x.parameter}: ${JSON.stringify(x.from)} → `+
+      `${JSON.stringify(x.to)} <span style="opacity:.6">(${x.from_stage}→${x.to_stage})</span></span>`
+    ).join(""));
+  }
+  d3.select(mount).append("p").attr("class","note").text(
+    "Columns are stages; a modality that does not use a stage has no block "+
+    "in that column. Block height reflects how many native libraries carry "+
+    "that stage. Colour is the modality.");
+}
+
+// ---------- detail table ----------
+function renderDetail(m,mount){
+  const model=stagedModel(m);
+  const bs=[...model.buckets.values()]
+    .sort((a,b)=>a.modality.localeCompare(b.modality)||
+                 STAGE_ORDER.indexOf(a.stage)-STAGE_ORDER.indexOf(b.stage));
+  let h='<table><tr><th>modality</th><th>stage</th><th>modules</th>'+
+        '<th>operations</th><th>parameters</th><th>models / endpoints</th></tr>';
+  for(const b of bs){
+    const ps=Object.entries(b.params).map(([k,v])=>`${k}=${[...v].slice(0,6).join("/")}`);
+    const tail=[...b.models].map(s=>s.split("/").pop())
+      .concat(b.endpoints.size?[`${b.endpoints.size} endpoints`]:[]);
+    h+=`<tr><td><span class="tag" style="border-color:${colourFor(b.modality)}">${b.modality}</span></td>`+
+       `<td>${b.stage}</td><td>${b.modules.size||"—"}</td>`+
+       `<td class="mono">${[...b.ops].slice(0,10).join(", ")||"—"}</td>`+
+       `<td class="mono">${ps.join("<br>")||"—"}</td>`+
+       `<td class="mono">${tail.join(", ")||"—"}</td></tr>`;
+  }
+  mount.innerHTML=h+"</table>";
+}
+
+// ---------- multi-app comparison ----------
+function renderCompare(ms,mount){
+  const mods=[...new Set(ms.flatMap(m=>m.modalities))].sort();
+  let h=`<h2>${ms.length} apps</h2><table><tr><th>app</th>`+
+    mods.map(x=>`<th><span class="tag" style="border-color:${colourFor(x)}">${x}</span></th>`).join("")+
+    `<th>transitions</th></tr>`;
+  for(const m of ms.slice().sort((a,b)=>a.pkg.localeCompare(b.pkg))){
+    const have=new Set(m.modalities);
+    h+=`<tr><td><b>${m.pkg}</b>${m.version?" v"+m.version:""}</td>`+
+      mods.map(x=>{
+        const st=[...new Set(m.chain.filter(e=>canon(e.modality)===x).map(e=>e.stage))]
+          .filter(s=>STAGE_ORDER.includes(s))
+          .sort((a,b)=>STAGE_ORDER.indexOf(a)-STAGE_ORDER.indexOf(b));
+        return `<td class="mono" style="text-align:center">${
+          have.has(x)?st.map(s=>s[0].toUpperCase()).join("→"):""}</td>`;
+      }).join("")+
+      `<td style="text-align:center">${m.transitions.length}</td></tr>`;
+  }
+  mount.innerHTML=h+'</table><p class="note">Letters are stages present per modality: '+
+    'C=capture, P=preprocess, F=features, I=inference, O=output.</p>';
+}
+
+// ---------- driver ----------
+function draw(){
+  const view=document.getElementById("view");
+  view.hidden=!RECORDS.length; if(!RECORDS.length) return;
+  const ms=RECORDS.map(norm);
+  const single=ms.length===1;
+  document.getElementById("appname").textContent=
+    single?`${ms[0].pkg}${ms[0].version?" v"+ms[0].version:""}`:"";
+  document.getElementById("count").textContent=
+    `${ms.length} record${single?"":"s"} · ${ms[0].type}`;
+
+  const choices=single?["pipeline","detail"]:["compare","pipeline","detail"];
+  const eff=MODE==="auto"?choices[0]:(choices.includes(MODE)?MODE:choices[0]);
+  document.getElementById("modes").innerHTML=choices.map(c=>
+    `<button class="${eff===c?"on":""}" data-m="${c}">${
+      {pipeline:"Pipeline",detail:"Detail",compare:"Compare apps"}[c]}</button>`).join("");
+  document.querySelectorAll("#modes button").forEach(b=>
+    b.onclick=()=>{MODE=b.dataset.m;draw();});
+
+  // modality filter chips (colour legend doubles as filter)
+  const allMods=[...new Set(ms.flatMap(m=>m.modalities))].sort();
+  document.getElementById("filters").innerHTML=allMods.map(x=>
+    `<span class="chip ${HIDDEN.has(x)?"off":""}" data-x="${x}">`+
+    `<i style="background:${colourFor(x)}"></i>${x}</span>`).join("");
+  document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{
+    const x=c.dataset.x; HIDDEN.has(x)?HIDDEN.delete(x):HIDDEN.add(x); draw();});
+
+  const panel=document.getElementById("panel"); panel.innerHTML="";
+  if(ms.some(m=>m.raw.__stale)){
+    const w=document.createElement("div");
+    w.style.cssText="border:1px solid var(--video);background:#fbeae4;"+
+      "padding:.6rem .8rem;border-radius:6px;margin-bottom:.8rem;font-size:.85rem;";
+    w.innerHTML="<b>Stale file:</b> this flows output has no <code>chain</code> "+
+      "(no chain — stale file). It was produced before the staged-modality "+
+      "restructure, so modality columns are empty. Re-run <code>flows</code> "+
+      "with the current toolkit to populate them.";
+    panel.appendChild(w);
+  }
+  if(eff==="compare") renderCompare(ms,panel);
+  else if(eff==="detail") renderDetail(ms[0],panel);
+  else renderStaged(ms[0],panel);
+}
+
+function ingest(text){
+  text=text.trim(); const out=[];
+  try{const o=JSON.parse(text); return Array.isArray(o)?o:[o];}catch(e){}
+  for(const line of text.split("\n")) if(line.trim())
+    try{out.push(JSON.parse(line));}catch(e){}
+  return out;
+}
+function addFiles(files){
+  Promise.all([...files].map(f=>f.text().then(t=>{
+    try{RECORDS.push(...ingest(t));}catch(e){}}))).then(draw);
+}
+const drop=document.getElementById("drop"),fi=document.getElementById("file");
+drop.onclick=()=>fi.click(); fi.onchange=e=>addFiles(e.target.files);
+document.getElementById("reset").onclick=()=>{RECORDS=[];MODE="auto";HIDDEN=new Set();
+  document.getElementById("view").hidden=true;};
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>addFiles(e.dataTransfer.files));
+</script>
+</body>
+</html>

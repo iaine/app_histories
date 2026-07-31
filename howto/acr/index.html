@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>ACR: detecting automatic content recognition - CIM App Histories Toolkit</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">CIM App Histories Toolkit</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../../methods/" class="nav-link">Methods</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Ab</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../ab/abtasty/" class="dropdown-item">ABTasty</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/adapty/" class="dropdown-item">Adapty</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/adobe/" class="dropdown-item">Adobe</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/amplitude/" class="dropdown-item">Amplitude</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/apphud/" class="dropdown-item">AppHud</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/applause/" class="dropdown-item">Applause</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/apptimize/" class="dropdown-item">Apptimize</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/batch/" class="dropdown-item">Batch</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/clevertap/" class="dropdown-item">Clevertap</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/configcat/" class="dropdown-item">ConfigCat</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/gameanalytics/" class="dropdown-item">GameAnalytics</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/games%20of%20whales/" class="dropdown-item">Games of Whales</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/google/" class="dropdown-item">Google</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/huawei/" class="dropdown-item">Huawei</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/kameleoon/" class="dropdown-item">Kameleoon</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/launchdarkly/" class="dropdown-item">LaunchDarkly</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/mparticle/" class="dropdown-item">mParticle</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/optimilzely/" class="dropdown-item">Optimilzely</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/posthog/" class="dropdown-item">postHog</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/qonversion/" class="dropdown-item">Qonversion</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/shence/" class="dropdown-item">Shence?</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/split/" class="dropdown-item">Split</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/splitforce/" class="dropdown-item">Splitforce</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/statsig/" class="dropdown-item">Statsig</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/swrv/" class="dropdown-item">Swrv</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/taplytics/" class="dropdown-item">Taplytics</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/umeng/" class="dropdown-item">Umeng</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/unity/" class="dropdown-item">Unity</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/uxcam/" class="dropdown-item">UXCam</a>
+</li>
+                                    
+<li>
+    <a href="../../ab/vwo/" class="dropdown-item">VWO</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Dev</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../dev/" class="dropdown-item">Developer Documents</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/cli/" class="dropdown-item">Command reference</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/download/" class="dropdown-item">Download</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/getting-started/" class="dropdown-item">Getting started</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/logging/" class="dropdown-item">Logging</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/profiling/" class="dropdown-item">Profiling: timing and memory tracing</a>
+</li>
+                                    
+<li>
+    <a href="../../dev/results/" class="dropdown-item">Working with results</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Howto</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">ACR: detecting automatic content recognition</a>
+</li>
+                                    
+<li>
+    <a href="../app_language/" class="dropdown-item">App language</a>
+</li>
+                                    
+<li>
+    <a href="../cli/" class="dropdown-item">Command reference</a>
+</li>
+                                    
+<li>
+    <a href="../dex-tracing/" class="dropdown-item">DEX tracing in flows</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Tutorials</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../tutorials/ab/" class="dropdown-item">AB Testing Tutorial</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/listening/" class="dropdown-item">Listening: tracing audio inputs and their parameters</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/localisation/" class="dropdown-item">Localisation</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/manifests/" class="dropdown-item">Manifests</a>
+</li>
+                                    
+<li>
+    <a href="../../tutorials/personalisation/" class="dropdown-item">Personalisation</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../user/contributions/" class="dropdown-item">Contributions</a>
+</li>
+                                    
+<li>
+    <a href="../../user/getting-started/" class="dropdown-item">Getting started</a>
+</li>
+                                    
+<li>
+    <a href="../../user/hpc/" class="dropdown-item">Running at scale</a>
+</li>
+                                    
+<li>
+    <a href="../../user/installation/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../user/results/" class="dropdown-item">Working with results</a>
+</li>
+                                    
+<li>
+    <a href="../../user/visualising/" class="dropdown-item">Visualising results</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Viewer</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../viewer/" class="dropdown-item">Index</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../../dev/results/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../app_language/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#acr-detecting-automatic-content-recognition" class="nav-link">ACR: detecting automatic content recognition</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#what-it-looks-for" class="nav-link">What it looks for</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#the-confidence-field-read-this-carefully" class="nav-link">The confidence field — read this carefully</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#reading-the-output" class="nav-link">Reading the output</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#validation-what-the-grades-mean-in-practice" class="nav-link">Validation: what the grades mean in practice</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#extending-the-vocabulary" class="nav-link">Extending the vocabulary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#cost" class="nav-link">Cost</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#limitations" class="nav-link">Limitations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#see-also" class="nav-link">See also</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="acr-detecting-automatic-content-recognition">ACR: detecting automatic content recognition</h1>
+<p>The <code>acr</code> workflow answers one question: does an app contain <strong>automatic
+content recognition</strong> for audio — the Shazam-style capability of listening
+through the microphone, computing an acoustic fingerprint, and matching it
+against a cloud catalogue to identify what is playing?</p>
+<p>ACR is a distinct research object from generic microphone use. A voice-notes
+app records audio; an ACR-enabled app records audio <em>in order to recognise
+what is playing in the room</em>. The privacy and platform-power questions are
+different, so <code>acr</code> reports it as its own graded signal rather than folding
+it into <code>flows</code>.</p>
+<pre><code class="language-bash">cim-apps acr --apk app.apk --outdir results/
+cim-apps acr --apk-dir apps/ --outdir results/
+cim-apps acr --apk app.xapk --outdir results/     # bundles work too
+</code></pre>
+<p>Output is one JSONL record per app, with the usual batching, sharding, and
+resume behaviour of the other workflows.</p>
+<h2 id="what-it-looks-for">What it looks for</h2>
+<p>Four independent signals, plus a keyword tier, because any single signal has
+a benign explanation:</p>
+<ol>
+<li><strong>SDK package</strong> (strongest) — a named ACR vendor's classes shipped in the
+   app: ACRCloud, Shazam, Gracenote, SoundHound/Houndify, AudD, and others.</li>
+<li><strong>Fingerprinting native library</strong> (strong) — a purpose-built <code>.so</code> such
+   as <code>libfingerprint_jni.so</code> or NetEase's <code>libNeSRAudioRecAndFpExtractor.so</code>.</li>
+<li><strong>Recognition endpoint</strong> (strong) — a URL path like <code>/v1/identify</code>,
+   <code>/api/recognize</code>, or an ACRCloud/Houndify host.</li>
+<li><strong>Capture + egress</strong> (corroborating) — the app records audio <em>and</em>
+   reaches the network.</li>
+</ol>
+<p>Plus a <strong>CJK keyword</strong> tier for Chinese-market "听歌识曲" (listen-to-identify)
+features. Keywords are <strong>corroboration only</strong> — a feature label can name a
+chart or outlive a removed feature, so a keyword never raises confidence on
+its own.</p>
+<p>Permissions (<code>RECORD_AUDIO</code>, <code>INTERNET</code>, <code>FOREGROUND_SERVICE_MICROPHONE</code>)
+are recorded but never a signal in their own right: a permission is a
+capability, not evidence of use.</p>
+<h2 id="the-confidence-field-read-this-carefully">The <code>confidence</code> field — read this carefully</h2>
+<p>The workflow grades <code>high</code> / <code>medium</code> / <code>low</code> / <code>none</code>. <strong>This is the field
+to understand, because it is what keeps the result honest.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Confidence</th>
+<th>Rule of thumb</th>
+<th>How to read it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>high</code></td>
+<td>a named SDK, or ≥2 strong signals, or several fingerprint libraries</td>
+<td>A specific ACR vendor is shipped, or independent evidence agrees. Strong.</td>
+</tr>
+<tr>
+<td><code>medium</code></td>
+<td>one strong signal + capture behaviour</td>
+<td>ACR-shaped, vendor not named. Worth inspecting.</td>
+</tr>
+<tr>
+<td><code>low</code></td>
+<td>capture + egress only</td>
+<td>Records and networks. Could be ACR, could be any uploading recorder.</td>
+</tr>
+<tr>
+<td><code>none</code></td>
+<td>no primary signal</td>
+<td>No ACR evidence — even if a keyword matched.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>A keyword match with no primary signal grades <code>none</code>, not <code>low</code>.</strong> This is
+deliberate and important: a music player can display a chart called
+"听歌识曲" ("listen-to-identify chart") without doing any recognition itself.
+That app has the <em>words</em> but none of the <em>capability</em>, and the workflow must
+not flag it. See the validation below for a real example.</p>
+<h2 id="reading-the-output">Reading the output</h2>
+<pre><code class="language-json">{
+  &quot;input&quot;: &quot;…/app.apk&quot;,
+  &quot;analysis&quot;: &quot;acr&quot;,
+  &quot;app&quot;: {&quot;pkg&quot;: &quot;com.netease.cloudmusic&quot;, &quot;version&quot;: &quot;9.5.05&quot;},
+  &quot;acr&quot;: {
+    &quot;confidence&quot;: &quot;high&quot;,
+    &quot;vendors&quot;: [],
+    &quot;native_libs&quot;: [
+      {&quot;library&quot;: &quot;libnesraudiorecandfpextractor.so&quot;, &quot;vendor&quot;: &quot;NetEase&quot;,
+       &quot;pattern&quot;: &quot;libnesraudiorecandfpextractor&quot;, &quot;confidence&quot;: &quot;confirmed&quot;}
+    ],
+    &quot;endpoints&quot;: [
+      {&quot;url&quot;: &quot;https://identify.acrcloud.com/v1/identify&quot;,
+       &quot;pattern&quot;: &quot;/v1/identify&quot;, &quot;vendor&quot;: &quot;ACRCloud&quot;, &quot;confidence&quot;: &quot;confirmed&quot;}
+    ],
+    &quot;keywords&quot;: [
+      {&quot;keyword&quot;: &quot;听歌识曲&quot;, &quot;confidence&quot;: &quot;confirmed&quot;, &quot;note&quot;: &quot;feature label&quot;},
+      {&quot;keyword&quot;: &quot;听歌识曲算法&quot;, &quot;confidence&quot;: &quot;confirmed&quot;, &quot;note&quot;: &quot;algorithm setting&quot;}
+    ],
+    &quot;capture&quot;: [&quot;AudioRecord&quot;, &quot;MediaProjection&quot;, &quot;MediaRecorder&quot;],
+    &quot;egress&quot;: [&quot;HttpURLConnection&quot;, &quot;Socket&quot;],
+    &quot;permissions&quot;: [&quot;android.permission.RECORD_AUDIO&quot;, &quot;android.permission.INTERNET&quot;],
+    &quot;evidence&quot;: {
+      &quot;sdk_package&quot;: false, &quot;native_lib&quot;: true, &quot;acr_endpoint&quot;: true,
+      &quot;capture_and_egress&quot;: true, &quot;cjk_keyword&quot;: true
+    }
+  }
+}
+</code></pre>
+<p>The <code>evidence</code> block is a quick five-way summary; the <code>vendors</code>,
+<code>native_libs</code>, <code>endpoints</code>, and <code>keywords</code> arrays give the specific items
+behind each. Every matched item carries its own <code>confidence</code> (<code>confirmed</code> =
+verified against a real APK during seeding; <code>likely</code>/<code>seed</code> = plausible but
+unverified — see the vocabulary README).</p>
+<p>Filtering a corpus for confident ACR:</p>
+<pre><code class="language-python">import json
+
+records = [json.loads(l) for l in open(&quot;results/all_acr.jsonl&quot;)]
+acr_apps = [r for r in records if r[&quot;acr&quot;][&quot;confidence&quot;] in (&quot;high&quot;, &quot;medium&quot;)]
+</code></pre>
+<h2 id="validation-what-the-grades-mean-in-practice">Validation: what the grades mean in practice</h2>
+<p>The workflow was validated against three real Chinese-market music apps.
+Two are genuine ACR; one is the negative control that proves the grading
+does not over-claim.</p>
+<table>
+<thead>
+<tr>
+<th>App</th>
+<th>Grade</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>NetEase Cloud Music</strong> (<code>com.netease.cloudmusic</code>)</td>
+<td><code>high</code></td>
+<td>three fingerprint libraries, three capture APIs, <code>听歌识曲算法</code> and other implementation strings, egress — everything but a named SDK</td>
+</tr>
+<tr>
+<td><strong>QQ Music</strong> (<code>com.tencent.qqmusic</code>)</td>
+<td><code>high</code></td>
+<td><code>libfingerprint_jni.so</code>, <code>MediaRecorder</code>, <code>听歌识曲</code> implementation strings</td>
+</tr>
+<tr>
+<td><strong>畅听音乐</strong> (<code>trend.cloudmusic.online</code>)</td>
+<td><code>none</code></td>
+<td>contains the string <code>听歌识曲榜</code> (a <em>chart named after the feature</em>) but <strong>no</strong> <code>RECORD_AUDIO</code>, no capture API, no fingerprint library — the keyword is inert</td>
+</tr>
+</tbody>
+</table>
+<p>The third app is the point: same keyword as the other two, opposite verdict,
+because the model weighs capability, not vocabulary.</p>
+<h2 id="extending-the-vocabulary">Extending the vocabulary</h2>
+<p>The vendor knowledge is data, not code, in two CSVs under
+<code>cim_app_histories/acr/</code>:</p>
+<ul>
+<li><strong><code>acr_sdks.csv</code></strong> — SDK package signatures (<code>signature,vendor,product,
+  category,region,confidence</code>).</li>
+<li><strong><code>acr_signatures.csv</code></strong> — native-library, endpoint-path, and CJK-keyword
+  patterns (<code>kind,pattern,vendor,note,confidence</code>).</li>
+</ul>
+<p>Add a row to extend coverage; no code change. When you run against a real
+app that a <code>likely</code>/<code>seed</code> entry was guessing at, promote it to <code>confirmed</code>
+and add any new strings you see. The README in that folder documents the
+provenance of every seeded entry and the known gaps (notably: non-Western
+vendors, and apps that embed ACR second-hand rather than being music apps).</p>
+<h2 id="cost">Cost</h2>
+<p><code>acr</code> parses the app's DEX files once and runs all detectors on that single
+pass. On a large app (NetEase, 246 MB, 22 DEX files, ~1.1M strings) this is
+around 160 seconds; small apps are a few seconds. The cost is the DEX parse,
+which is unavoidable for string- and class-level detection.</p>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li><strong>The SDK internals are invisible.</strong> The fingerprint pipeline
+  (spectrogram → fingerprint → query) runs inside the SDK at runtime. Static
+  analysis sees that an ACR SDK is <em>present</em> and that capture and network
+  APIs <em>exist</em>; it does not see the transform between them. The workflow
+  reports "ACR capability present", never "the app computed a fingerprint
+  and sent it".</li>
+<li><strong>Seed vocabulary.</strong> The CSVs are curated, not exhaustive. Absence of a
+  signal is not proof of absence of ACR — only that no <em>known</em> signal fired.
+  Non-Western vendors beyond ACRCloud/NetEase/QQ are a known gap.</li>
+<li><strong>Endpoint paths are heuristic.</strong> <code>/identify</code> is used by plenty of non-ACR
+  services; that is why a path alone never reaches <code>high</code>.</li>
+<li><strong>Obfuscation.</strong> Package names can be shaded; native-library filenames and
+  vendor hosts survive more often. Under-reporting is the safe failure — the
+  workflow claims less than the truth, never more.</li>
+</ul>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="results.md">Working with results</a> — loading JSONL into pandas</li>
+<li><a href="../cli/">CLI reference</a> — all flags and batching options</li>
+<li><code>cim_app_histories/acr/README.md</code> — the vocabulary and its provenance</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

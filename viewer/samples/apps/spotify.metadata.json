@@ -1,0 +1,58 @@
+{
+ "input": "com.spotify.app_1.0.apk",
+ "analysis": "metadata",
+ "toolkit_version": "0.0.2",
+ "applicationname": "App",
+ "pkg": "com.spotify.app",
+ "version_code": "100",
+ "android_name": "1.0",
+ "permissions": "android.permission.INTERNET;android.permission.RECORD_AUDIO;android.permission.BLUETOOTH;android.permission.ACCESS_FINE_LOCATION",
+ "activities": "MainActivity",
+ "intents": "android.intent.action.MAIN",
+ "localisation": [
+  [
+   "en",
+   "",
+   ""
+  ],
+  [
+   "es",
+   "",
+   ""
+  ],
+  [
+   "de",
+   "",
+   ""
+  ],
+  [
+   "fr",
+   "",
+   ""
+  ],
+  [
+   "ja",
+   "",
+   ""
+  ],
+  [
+   "zh",
+   "",
+   ""
+  ],
+  [
+   "pt",
+   "",
+   ""
+  ],
+  [
+   "it",
+   "",
+   ""
+  ]
+ ],
+ "ab": [
+  "com.google.firebase.analytics",
+  "com.amplitude"
+ ]
+}
