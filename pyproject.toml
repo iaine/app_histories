@@ -58,7 +58,10 @@ Issues = "https://github.com/iaine/app_histories/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
 [tool.setuptools.package-data]
-"cim_app_histories.ab" = ["*.csv"]
-"cim_app_histories.localisation" = ["*.txt"]
-"cim_app_histories.dex" = ["*.csv"]
+# Research instruments shipped as data: tracker taxonomy, A/B vendor list,
+# and the ACR vendor / signature / keyword tables. Without this they are
+# absent from the installed wheel and the workflows fail at runtime with
+# "file not found" -- the tracker CSV hit exactly this.
+"cim_app_histories" = ["**/*.csv"]
