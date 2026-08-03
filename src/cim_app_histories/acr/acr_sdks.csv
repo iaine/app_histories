@@ -1,0 +1,20 @@
+signature,vendor,product,category,region,confidence
+com.acrcloud,ACRCloud,ACRCloud SDK,music_recognition,SG/CN,confirmed
+cn.acrcloud,ACRCloud,ACRCloud SDK (CN),music_recognition,CN,likely
+com.shazam.android,Apple,Shazam,music_recognition,US,confirmed
+com.shazam,Apple,Shazam,music_recognition,US,likely
+com.gracenote,Nielsen,Gracenote GNSDK,content_recognition,US,confirmed
+com.gracenote.gnsdk,Nielsen,Gracenote GNSDK,content_recognition,US,confirmed
+com.gracenote.mmid,Nielsen,Gracenote Mobile Client,music_recognition,US,likely
+com.digimarc,Digimarc,Digimarc,watermark,US,likely
+com.audiblemagic,Audible Magic,Audible Magic,content_id,US,likely
+tv.pex,Pex,Pex Attribution Engine,rights_id,US,likely
+com.pex,Pex,Pex Attribution Engine,rights_id,US,likely
+com.soundhound,SoundHound,SoundHound / Houndify,music_recognition,US,confirmed
+com.hound,SoundHound,Houndify,voice_recognition,US,likely
+com.soundhound.android,SoundHound,SoundHound app,music_recognition,US,confirmed
+io.audd,AudD,AudD,music_recognition,intl,likely
+com.audd,AudD,AudD,music_recognition,intl,likely
+com.musicg,MusicG,MusicG fingerprint (OSS),fingerprint_oss,intl,likely
+com.doreso,Doreso,Doreso (ACRCloud subsidiary),music_recognition,CN,likely
+com.microsoft.cognitiveservices,Microsoft,Azure audio,speech_recognition,US,likely

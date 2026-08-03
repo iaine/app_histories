@@ -1,0 +1,44 @@
+kind,pattern,vendor,note,confidence
+native,libacrcloud,ACRCloud,ACRCloud engine (short form),likely
+native,libacrclouduniversalengine,ACRCloud,libACRCloudUniversalEngine.so JNI,confirmed
+native,libacr,,generic fingerprinter,seed
+native,libfingerprint,,generic fingerprinter,seed
+native,libmusicid,,MusicID-style recognizer,seed
+native,librecognizer,,generic recognizer,seed
+native,libgnsdk,Nielsen,Gracenote GNSDK native,likely
+native,libgracenote,Nielsen,Gracenote native,likely
+native,libshazam,Apple,Shazam native,likely
+native,libsoundhound,SoundHound,SoundHound native,likely
+native,libhoundify,SoundHound,Houndify native,likely
+native,libpex,Pex,Pex engine,seed
+native,libaudiblemagic,Audible Magic,Audible Magic native,seed
+native,libaudfprint,,audfprint-style fingerprinter,seed
+native,libchromaprint,AcoustID,Chromaprint (AcoustID/OSS),likely
+native,libcodegen,Echonest,Echoprint codegen (OSS),likely
+path,/api/recognize,,recognition endpoint,seed
+path,/api/fingerprint,,fingerprint submission,seed
+path,/contentid,,content id,seed
+path,/musicid,,music id,seed
+path,/identify,,identification endpoint,seed
+path,/v1/identify,ACRCloud,ACRCloud identify path,confirmed
+path,identify-,ACRCloud,ACRCloud regional host prefix,likely
+path,acrcloud.com,ACRCloud,ACRCloud host,confirmed
+path,acrcloud.cn,ACRCloud,ACRCloud China host,confirmed
+path,api.houndify.com,SoundHound,Houndify API host,confirmed
+path,/v1/audio,SoundHound,Houndify audio query path,confirmed
+path,api.audd.io,AudD,AudD API host,likely
+path,gracenote.com,Nielsen,Gracenote host,likely
+path,/webapi,Nielsen,Gracenote web API,seed
+keyword,听歌识曲,,listen-to-identify feature label (CJK) - QQ Music confirmed,confirmed
+keyword,识曲榜,,identify-song chart (CJK) - QQ Music confirmed,confirmed
+keyword,后台听歌识曲,,background listen-to-identify impl string - QQ Music confirmed,confirmed
+keyword,音频指纹,,"audio fingerprint" technical term - QQ Music impl string,confirmed
+keyword,哼唱识别,,humming recognition feature label (CJK),seed
+keyword,识别歌曲,,identify-song label (CJK),seed
+keyword,听音识曲,,listen-to-identify variant (CJK),seed
+native,libnesraudiorecandfpextractor,NetEase,NetEase song-recognition audio+fingerprint extractor - confirmed,confirmed
+native,libnevfpgenerator,NetEase,NetEase fingerprint generator - confirmed,confirmed
+native,libfpgenerate,NetEase,fingerprint generate lib (NetEase) - confirmed,confirmed
+keyword,哼唱识曲,,humming-to-identify (NetEase form) - confirmed,confirmed
+keyword,链接识曲,,link-to-identify (NetEase) - confirmed,confirmed
+keyword,听歌识曲算法,,recognition algorithm impl string (NetEase) - confirmed,confirmed
