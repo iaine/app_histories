@@ -34,6 +34,11 @@ from importlib import metadata
 from pathlib import Path
 
 
+from loguru import logger
+logger.remove()
+logger.add(sys.stderr, level="CRITICAL", format="<level>{message}</level>")
+
+
 # ----------------------------------------------------------------------
 # infrastructure
 # ----------------------------------------------------------------------
