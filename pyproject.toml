@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
 keywords = ["android", "digital method", "apps"]
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 
 authors = [
   {name = "Iain Emsley", email = "iain.emsley@warwick.ac.uk"},
