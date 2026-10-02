@@ -4,15 +4,15 @@ Beginnings of the documentation for the CIM App Histories tools.
 
 This is a codebase that is under development, so may change.
 
-Methods and tools are being added on an ad-hic basis. 
+Methods and tools are being added on an ad-hoc basis. 
 
 ### Installation
 
-[Installation](installation) is via pip. 
+[Installation](user/installation) is via pip. 
 
 ### Contributions
 
-[Contributions](contributions) of many types are welcome.
+[Contributions](user/contributions) of many types are welcome.
 
 ### Using it
 
