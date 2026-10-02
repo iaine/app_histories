@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App Histories — metadata viewer</title>
+<style>
+  :root{--ink:#15140f;--paper:#f4f1e8;--line:#ccc5b0;--card:#fbfaf5;
+    --perm:#b5562f;--locale:#2f6f6a;--ab:#8a4f9e;--act:#3a7d9c;
+    --added:#2f7d4f;--removed:#b5562f;--dangerous:#b5562f;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;}
+  header{padding:1.4rem 1.6rem 1rem;border-bottom:1px solid var(--line);}
+  h1{margin:0;font-size:1.45rem;font-weight:600;letter-spacing:-.01em;}
+  .sub{margin:.25rem 0 0;font-size:.9rem;opacity:.7;font-style:italic;}
+  main{padding:1.2rem 1.6rem 2.4rem;}
+  #drop{border:1.5px dashed var(--line);border-radius:6px;padding:2.4rem 1rem;
+    text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--card);}
+  #drop.over{border-color:var(--ab);background:#f0ecdf;} #drop p{margin:.3rem 0;}
+  .hint{font-size:.82rem;opacity:.6;}
+  .bar{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin:.4rem 0 1.2rem;}
+  .modes{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  .modes button{border:0;background:var(--card);padding:.4rem .8rem;cursor:pointer;
+    font-family:inherit;font-size:.85rem;color:var(--ink);}
+  .modes button.on{background:var(--ab);color:#fff;}
+  .modes button:not(:last-child){border-right:1px solid var(--line);}
+  .reset{font-family:inherit;font-size:.85rem;padding:.35rem .5rem;border:1px solid var(--line);
+    border-radius:5px;background:var(--card);color:var(--ink);cursor:pointer;}
+  .count{opacity:.6;font-size:.85rem;}
+  h2{font-size:1.05rem;font-weight:600;margin:1.6rem 0 .5rem;}
+  h3{font-size:.9rem;font-weight:600;margin:1rem 0 .35rem;opacity:.85;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:7px;padding:1rem 1.1rem;}
+  .card .name{font-weight:600;font-size:1.05rem;} .card .ver{opacity:.6;font-size:.85rem;}
+  .stat{display:flex;justify-content:space-between;margin:.55rem 0 .15rem;font-size:.85rem;}
+  .stat b{font-weight:600;} .barline{height:7px;border-radius:4px;background:#e6e0cf;overflow:hidden;}
+  .barline i{display:block;height:100%;}
+  .tag{display:inline-block;margin:1px 3px 1px 0;padding:.05rem .4rem;border-radius:10px;
+    font-size:.76rem;border:1px solid var(--line);background:var(--card);}
+  .tag.added{border-color:var(--added);background:#eaf3ec;}
+  .tag.removed{border-color:var(--removed);background:#fbeae4;text-decoration:line-through;opacity:.75;}
+  .tag.danger{border-color:var(--dangerous);color:var(--dangerous);}
+  table{border-collapse:collapse;width:100%;font-size:.82rem;margin-top:.3rem;}
+  th,td{border:1px solid var(--line);padding:.32rem .5rem;text-align:left;}
+  th{background:#ece7d8;font-weight:600;position:sticky;top:0;}
+  th.rot{height:90px;white-space:nowrap;} th.rot div{transform:translateX(8px) rotate(-55deg);width:20px;}
+  th.rot span{border-bottom:1px solid var(--line);padding:0 .2rem;}
+  td.app{font-weight:600;white-space:nowrap;} td.c{text-align:center;}
+  .cell{display:inline-block;width:16px;height:16px;border-radius:3px;}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin:.5rem 0;font-size:.78rem;}
+  .legend span{display:inline-flex;align-items:center;gap:.35rem;}
+  .legend i{width:11px;height:11px;border-radius:2px;display:inline-block;}
+  .empty{opacity:.6;font-style:italic;} svg{overflow:visible;}
+  footer{font-size:.76rem;opacity:.55;padding:0 1.6rem 1.4rem;}
+  code{background:#e8e3d4;padding:.05rem .3rem;border-radius:3px;font-size:.82em;}
+</style>
+</head>
+<body>
+<header>
+  <h1>App Histories — metadata viewer</h1>
+  <p class="sub">Dashboards, growth timelines and comparisons for <code>metadata</code> output</p>
+</header>
+<main>
+  <div id="drop">
+    <p><b>Drop one or more <code>*.metadata.jsonl</code> / <code>.json</code> files</b> or click to choose</p>
+    <p class="hint">one app = dashboard · many versions = growth timeline · many apps = comparison</p>
+    <input type="file" id="file" accept=".json,.jsonl" multiple hidden>
+  </div>
+  <div id="view" hidden>
+    <div class="bar">
+      <div class="modes" id="modes"></div>
+      <span class="count" id="count"></span>
+      <span style="flex:1"></span>
+      <button class="reset" id="csv">Export CSV</button>
+      <button class="reset" id="reset">Clear</button>
+    </div>
+    <div id="panel"></div>
+  </div>
+</main>
+<footer>
+  Static-analysis evidence: declared permissions, shipped locales, and SDK
+  signatures present in the package — not proof of runtime use.
+</footer>
+<script>
+const col=k=>getComputedStyle(document.documentElement).getPropertyValue("--"+k).trim()||"#777";
+let RECORDS=[], MODE="auto";
+
+// "dangerous" Android permissions worth flagging in studies
+const DANGEROUS=new Set(["RECORD_AUDIO","CAMERA","ACCESS_FINE_LOCATION",
+  "ACCESS_COARSE_LOCATION","READ_CONTACTS","READ_SMS","READ_CALL_LOG",
+  "BODY_SENSORS","READ_EXTERNAL_STORAGE","ACCESS_BACKGROUND_LOCATION"]);
+
+// ---- normalise one metadata record ----
+function norm(rec){
+  const splitField=v=>Array.isArray(v)?v:(typeof v==="string"&&v?v.split(";"):[]);
+  const perms=splitField(rec.permissions).map(p=>p.split(".").pop()).filter(Boolean);
+  const langs=[...new Set((rec.localisation||[]).map(l=>Array.isArray(l)?l[0]:l).filter(Boolean))];
+  const acts=splitField(rec.activities);
+  const intents=splitField(rec.intents);
+  const ab=(rec.ab||[]);
+  return {
+    pkg:rec.pkg||rec.applicationname||rec.input||"app",
+    name:rec.applicationname||rec.pkg||"app",
+    version:rec.android_name||"", code:+(rec.version_code)||0,
+    perms, langs, acts, intents, ab,
+  };
+}
+function scenario(ms){
+  if(ms.length<=1) return "single";
+  return new Set(ms.map(m=>m.pkg)).size===1?"versions":"apps";
+}
+function vsort(a,b){
+  if(a.code&&b.code&&a.code!==b.code) return a.code-b.code;
+  const pa=(a.version||"").split(".").map(Number),pb=(b.version||"").split(".").map(Number);
+  for(let i=0;i<Math.max(pa.length,pb.length);i++) if((pa[i]||0)!==(pb[i]||0)) return (pa[i]||0)-(pb[i]||0);
+  return 0;
+}
+const permTag=p=>`<span class="tag ${DANGEROUS.has(p)?"danger":""}">${p}</span>`;
+
+// ---- single-app dashboard ----
+function dashboard(m,mount){
+  const stat=(label,val,frac,c)=>`<div class="stat"><span>${label}</span><b>${val}</b></div>`+
+    `<div class="barline"><i style="width:${Math.min(100,frac*100)}%;background:${col(c)}"></i></div>`;
+  mount.innerHTML=`<div class="cards"><div class="card">
+    <div class="name">${m.name}</div><div class="ver">${m.pkg}${m.version?" · v"+m.version:""}</div>
+    ${stat("Permissions",m.perms.length,m.perms.length/30,"perm")}
+    ${stat("Languages",m.langs.length,m.langs.length/40,"locale")}
+    ${stat("A/B &amp; analytics SDKs",m.ab.length,m.ab.length/8,"ab")}
+    ${stat("Activities",m.acts.length,m.acts.length/40,"act")}
+  </div></div>
+  <h3>Permissions <span class="count">(red = sensitive)</span></h3>
+  <div>${m.perms.map(permTag).join("")||'<span class="empty">none</span>'}</div>
+  <h3>Languages shipped</h3>
+  <div>${m.langs.map(l=>`<span class="tag" style="border-color:${col('locale')}">${l}</span>`).join("")||'<span class="empty">none</span>'}</div>
+  <h3>A/B &amp; analytics SDKs</h3>
+  <div>${m.ab.map(s=>`<span class="tag" style="border-color:${col('ab')}">${s}</span>`).join("")||'<span class="empty">none</span>'}</div>`;
+}
+
+// ---- version growth timeline ----
+function timeline(ms,mount){
+  ms=ms.slice().sort(vsort);
+  // line chart of counts + diff table
+  const dims=[["perms","Permissions","perm"],["langs","Languages","locale"],["ab","SDKs","ab"]];
+  const W=Math.min(760,document.querySelector("main").clientWidth),H=220,pad=34;
+  const maxV=Math.max(...ms.flatMap(m=>dims.map(([k])=>m[k].length)),1);
+  const x=i=>pad+i*(W-2*pad)/Math.max(1,ms.length-1);
+  const y=v=>H-pad-(v/maxV)*(H-2*pad);
+  let svg=`<svg viewBox="0 0 ${W} ${H+10}" width="100%">`;
+  svg+=`<line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="${col('line')}"/>`;
+  ms.forEach((m,i)=>{svg+=`<text x="${x(i)}" y="${H-pad+16}" font-size="11" text-anchor="middle" opacity=".7">v${m.version}</text>`;});
+  for(const[k,label,c]of dims){
+    const pts=ms.map((m,i)=>[x(i),y(m[k].length)]);
+    svg+=`<polyline fill="none" stroke="${col(c)}" stroke-width="2" points="${pts.map(p=>p.join(",")).join(" ")}"/>`;
+    pts.forEach(([px,py],i)=>{svg+=`<circle cx="${px}" cy="${py}" r="3.5" fill="${col(c)}"><title>${label} v${ms[i].version}: ${ms[i][k].length}</title></circle>`;});
+    svg+=`<text x="${x(ms.length-1)+6}" y="${y(ms[ms.length-1][k].length)}" font-size="11" fill="${col(c)}">${label}</text>`;
+  }
+  svg+=`</svg>`;
+
+  // diff table: what each version added/removed vs the previous
+  let table=`<h2>What changed between versions</h2><table><tr><th>version</th>`+
+    dims.map(([,l])=>`<th>${l}</th>`).join("")+`</tr>`;
+  let prev=null;
+  for(const m of ms){
+    table+=`<tr><td class="app">v${m.version}</td>`;
+    for(const[k]of dims){
+      const cur=new Set(m[k]), pv=prev?new Set(prev[k]):new Set();
+      const add=[...cur].filter(v=>!pv.has(v)), rem=prev?[...pv].filter(v=>!cur.has(v)):[];
+      const isPerm=k==="perms";
+      const tags=(prev?add:[...cur]).map(v=>`<span class="tag ${prev?"added":""} ${isPerm&&DANGEROUS.has(v)?"danger":""}">${v}</span>`)
+        .concat(rem.map(v=>`<span class="tag removed">${v}</span>`));
+      table+=`<td>${tags.join("")||(prev?'<span class="empty">no change</span>':'—')}</td>`;
+    }
+    table+=`</tr>`; prev=m;
+  }
+  mount.innerHTML=`<h2>${ms[0].name} — ${ms.length} versions</h2>`+svg+table+"</table>";
+}
+
+// ---- multi-app comparison ----
+function comparison(ms,mount){
+  ms=ms.slice().sort((a,b)=>a.pkg.localeCompare(b.pkg));
+  // summary bars
+  let html=`<h2>${ms.length} apps compared</h2><div class="cards">`;
+  for(const m of ms) html+=`<div class="card"><div class="name">${m.name}</div>
+    <div class="ver">${m.pkg}</div>
+    <div class="stat"><span>perms</span><b>${m.perms.length}</b></div>
+    <div class="stat"><span>langs</span><b>${m.langs.length}</b></div>
+    <div class="stat"><span>SDKs</span><b>${m.ab.length}</b></div>
+    <div class="stat"><span>sensitive</span><b style="color:${col('dangerous')}">${m.perms.filter(p=>DANGEROUS.has(p)).length}</b></div></div>`;
+  html+=`</div>`;
+  // presence matrices for permissions, SDKs, languages
+  for(const[k,title,c]of[["perms","Permissions","perm"],["ab","A/B & analytics SDKs","ab"],["langs","Languages","locale"]]){
+    const universe=[...new Set(ms.flatMap(m=>m[k]))].sort();
+    if(!universe.length) continue;
+    html+=`<h2 style="font-size:.95rem">${title}</h2><div style="overflow-x:auto"><table><tr><th>app</th>`+
+      universe.map(u=>`<th class="rot"><div><span class="${k==='perms'&&DANGEROUS.has(u)?'':''}" ${k==='perms'&&DANGEROUS.has(u)?`style="color:${col('dangerous')}"`:''}>${u}</span></div></th>`).join("")+`</tr>`;
+    for(const m of ms){const have=new Set(m[k]);
+      html+=`<tr><td class="app">${m.name}</td>`+
+        universe.map(u=>`<td class="c">${have.has(u)?`<span class="cell" style="background:${k==='perms'&&DANGEROUS.has(u)?col('dangerous'):col(c)}"></span>`:""}</td>`).join("")+`</tr>`;}
+    html+="</table></div>";
+  }
+  mount.innerHTML=html;
+}
+
+// ---- CSV export (mirrors calls/metadata.py CSV_COLUMNS) ----
+const CSV_COLUMNS=["pkg","applicationname","android_name","version_code",
+  "permission_count","sensitive_permission_count","language_count",
+  "ab_sdk_count","activity_count","permissions","sensitive_permissions",
+  "languages","ab_sdks"];
+function csvRow(m){
+  const sens=m.perms.filter(p=>DANGEROUS.has(p));
+  return {pkg:m.pkg,applicationname:m.name,android_name:m.version,
+    version_code:m.code||"",permission_count:m.perms.length,
+    sensitive_permission_count:sens.length,language_count:m.langs.length,
+    ab_sdk_count:m.ab.length,activity_count:m.acts.length,
+    permissions:m.perms.join(";"),sensitive_permissions:sens.join(";"),
+    languages:m.langs.join(";"),ab_sdks:m.ab.join(";")};
+}
+function exportCSV(){
+  if(!RECORDS.length) return;
+  const rows=RECORDS.map(norm).map(csvRow);
+  const esc=v=>{v=String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const lines=[CSV_COLUMNS.join(",")].concat(
+    rows.map(r=>CSV_COLUMNS.map(c=>esc(r[c])).join(",")));
+  const blob=new Blob([lines.join("\n")+"\n"],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="metadata_"+(rows.length===1?rows[0].pkg:rows.length+"_apps")+".csv";
+  a.click(); URL.revokeObjectURL(a.href);
+}
+// ---- driver ----
+function draw(){
+  const view=document.getElementById("view");
+  view.hidden=RECORDS.length===0; if(!RECORDS.length) return;
+  const ms=RECORDS.map(norm), sc=scenario(ms);
+  document.getElementById("count").textContent=`${ms.length} record${ms.length>1?"s":""} · metadata`;
+  const choices=ms.length<=1?["dashboard"]:
+    sc==="versions"?["timeline","comparison","dashboard"]:["comparison","timeline","dashboard"];
+  const eff=MODE==="auto"?choices[0]:(choices.includes(MODE)?MODE:choices[0]);
+  document.getElementById("modes").innerHTML=choices.map(c=>
+    `<button class="${eff===c?"on":""}" data-m="${c}">${
+      {dashboard:"Dashboard",timeline:"Growth timeline",comparison:"Comparison"}[c]}</button>`).join("");
+  document.querySelectorAll("#modes button").forEach(b=>b.onclick=()=>{MODE=b.dataset.m;draw();});
+  const panel=document.getElementById("panel"); panel.innerHTML="";
+  if(eff==="dashboard") dashboard(ms[0],panel);
+  else if(eff==="timeline") timeline(ms,panel);
+  else comparison(ms,panel);
+}
+function ingest(text){text=text.trim();const out=[];
+  try{const o=JSON.parse(text);return Array.isArray(o)?o:[o];}catch(e){}
+  for(const line of text.split("\n")) if(line.trim()) try{out.push(JSON.parse(line));}catch(e){}
+  return out;}
+function addFiles(files){Promise.all([...files].map(f=>f.text().then(t=>{
+  try{RECORDS.push(...ingest(t));}catch(e){}}))).then(draw);}
+const drop=document.getElementById("drop"),fi=document.getElementById("file");
+drop.onclick=()=>fi.click(); fi.onchange=e=>addFiles(e.target.files);
+document.getElementById("csv").onclick=exportCSV;
+document.getElementById("reset").onclick=()=>{RECORDS=[];MODE="auto";
+  document.getElementById("view").hidden=true;};
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>addFiles(e.dataTransfer.files));
+</script>
+</body>
+</html>
