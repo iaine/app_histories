@@ -22,6 +22,7 @@ from pathlib import Path
 
 from .calls.multimodal_pipeline import build_flow_graph, to_sankey, looks_like_model
 from .calls.listening import trace_listening
+from .calls.trackers import trace_trackers
 from .bundle import is_bundle, open_bundle
 
 
@@ -439,24 +440,41 @@ def analyse_acr(apk_path):
         "summary": info,
     }
 
+def analyse_trackers(apk_path, resultsdir, dx=None):
 
-    """Trace audio inputs -> chain -> models/endpoints for one APK file.
-
-    Same ingestion as analyse_flows (split merging, DEX URLs including
-    runtime-assembled audio backends). Returns the listening result dict;
-    adds a ``warning`` key when the input looks like an incomplete base.
+    """Trace flows from tracker list. 
 
     :param apk_path: path to a .apk file
+    :param resultsdir: path to a directory where results will be stored and previous results exist
     """
     apk, files, info = collect_all_files(apk_path)
+
+    trackers = trace_trackers(files, resultsdir)
+
     dex_urls = extract_dex_urls(apk)
-    result = trace_listening(files, permissions=apk.get_permissions(),
-                             dex_urls=dex_urls)
-    result["summary"] = {**result.get("summary", {}), **info}
-    result["app"] = {"pkg": apk.get_package(),
-                     "version": apk.get_androidversion_name()}
+    dex_inputs = extract_dex_inputs(apk)
+
+    dex_egress = extract_dex_egress(apk) if dex_trace else {}
+    graph = build_tracker_graph(files, trackers=trackers,
+                             dx=dx, dex_urls=dex_urls,
+                             dex_inputs=dex_inputs, dex_egress=dex_egress,)
+    graph["summary"] = {**graph["summary"], **info}
+    pkg = apk.get_package()
+    version = apk.get_androidversion_name()
+    graph["app"] = {"pkg": pkg, "version": version}
+    # Gephi (and any node-table consumer) reads per-NODE attributes, not a
+    # top-level object. Stamp pkg/version onto every node so the Data
+    # Laboratory columns populate, and also expose them as flat top-level
+    # keys so a converter reading record["pkg"] finds them regardless of
+    # whether it expects the flat or the nested ("app") shape.
+    graph["pkg"] = pkg
+    graph["version"] = version
+    for node in graph["nodes"]:
+        node.setdefault("pkg", pkg)
+        node.setdefault("version", version)
+    graph["sankey"] = to_sankey(graph)
     if info["incomplete_base_apk"]:
-        result["warning"] = ("no native libraries found; likely a split App "
-                             "Bundle base APK. Provide the universal APK or "
-                             "split_config.*.apk files for complete analysis.")
-    return result
+        graph["warning"] = ("no native libraries found; likely a split App "
+                            "Bundle base APK. Provide the universal APK or "
+                            "split_config.*.apk files for complete analysis.")
+    return graph

@@ -38,6 +38,24 @@ cim-apps metadata --apk-list corpus.txt --outdir /scratch/results \
     --task-index "$SLURM_ARRAY_TASK_ID" --task-count 100
 ```
 
+We have also used:
+
+```bash
+#SBATCH --array=0-99
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=48
+#SBATCH --mem-per-cpu=3988
+#SBATCH --time=03:00:00
+
+cim-apps flows --apk-dir /scratch/apps --outdir /scratch/results
+```
+This worked well to split the tasks for 99 apps across the cores on one node. The exact array size numbers will vary on how many apps that are being processed.
+
+Again the cpus-per-task and mem-per-cpu is based on the hardware specs that the machine is being run on. mem-per-cpu maybe helpful for larger apps that are being transferred. 
+
+A similar version was run using a similar script but without the array values: all data ran on one node and was organised by the software. 
+
 ## Containers (Apptainer)
 
 Most clusters run Apptainer/Singularity rather than Docker. The

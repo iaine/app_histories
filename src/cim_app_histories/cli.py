@@ -245,13 +245,22 @@ def task_acr(apk_path, options=None):
     rec = dict(base_record(apk_path, "acr"), **result)
     return [rec]
 
+def task_tracker(apk_path, options=None):
+    """Detect trackers in one app: SDK packages, native libs, and
+    network endpoints, combined into a graded confidence."""
+    from .calls.tracker import analyse_tracker
+
+    result = analyse_tracker(apk_path)
+    rec = dict(base_record(apk_path, "tracker"), **result)
+    return [rec]
+
 
 TASKS = {
     "classify": task_classify,
     "flows": task_flows,
     "metadata": task_metadata,
     "listening": task_listening,
-    "acr": task_acr,
+    "tracker": task_tracker,
 }
 
 
