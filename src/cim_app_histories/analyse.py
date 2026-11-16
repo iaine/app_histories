@@ -22,7 +22,7 @@ from pathlib import Path
 
 from .calls.multimodal_pipeline import build_flow_graph, to_sankey, looks_like_model
 from .calls.listening import trace_listening
-from .calls.trackers import trace_trackers
+from .calls.trackers import build_tracker_graph
 from .bundle import is_bundle, open_bundle
 
 
@@ -440,41 +440,89 @@ def analyse_acr(apk_path):
         "summary": info,
     }
 
-def analyse_trackers(apk_path, resultsdir, dx=None):
 
-    """Trace flows from tracker list. 
+def _iter_dex(apk_path):
+    """Yield ``(apk, DEX)`` for every classes*.dex of an app, one parsed
+    DEX at a time. Unlike collect_all_files this reads no native
+    libraries or assets -- the tracker graph only needs the bytecode, and
+    loading a 200 MB app's files to ignore them is wasted memory.
 
-    :param apk_path: path to a .apk file
-    :param resultsdir: path to a directory where results will be stored and previous results exist
+    Packaged bundles (.xapk/.apks/.apkm) are unpacked for the duration of
+    the scan; feature splits can carry their own DEX, so every member is
+    read, base first."""
+    from androguard.core.apk import APK
+    from androguard.core.dex import DEX
+
+    def walk(apk):
+        for buff in apk.get_all_dex():
+            try:
+                dex = DEX(buff)
+            except Exception:
+                continue
+            yield apk, dex
+
+    if is_bundle(apk_path):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            member_paths, _ = open_bundle(apk_path, td)
+            base = None
+            for member in member_paths:
+                try:
+                    apk = APK(str(member))
+                except Exception:
+                    continue
+                base = base or apk
+                for _, dex in walk(apk):
+                    yield base, dex
+            if base is None:
+                raise ValueError(f"no readable APK inside bundle {apk_path}")
+        return
+
+    yield from walk(APK(str(apk_path)))
+
+
+def analyse_network(apk_path, trackers, level="method",
+                    include_internal=False):
+    """Tracker call graph for one APK file: app code -> tracker SDK ->
+    network API / framework.
+
+    ``trackers`` is the shared table from
+    :func:`cim_app_histories.calls.trackers.tracker_list`, read once per
+    run from the metadata results; every app is scanned for all of it.
+
+    :param apk_path: path to a .apk / .xapk / .apks / .apkm file
+    :param trackers: {signature: {"name", "category"}}
+    :param level: "method" (default) or "class"
+    :param include_internal: keep calls that stay inside one tracker
+    :returns: record with ``pkg``, ``version``, ``graph`` and ``summary``
     """
-    apk, files, info = collect_all_files(apk_path)
+    from .dex.dex import analyseDEX
 
-    trackers = trace_trackers(files, resultsdir)
+    holder = {}
 
-    dex_urls = extract_dex_urls(apk)
-    dex_inputs = extract_dex_inputs(apk)
+    def dexes():
+        for apk, dex in _iter_dex(apk_path):
+            holder.setdefault("apk", apk)
+            yield dex
 
-    dex_egress = extract_dex_egress(apk) if dex_trace else {}
-    graph = build_tracker_graph(files, trackers=trackers,
-                             dx=dx, dex_urls=dex_urls,
-                             dex_inputs=dex_inputs, dex_egress=dex_egress,)
-    graph["summary"] = {**graph["summary"], **info}
+    graph = build_tracker_graph(dexes(), trackers,
+                                network_apis=analyseDEX._EGRESS_APIS,
+                                level=level,
+                                include_internal=include_internal)
+    apk = holder.get("apk")
+    if apk is None:
+        raise ValueError(f"no readable DEX in {apk_path}")
     pkg = apk.get_package()
     version = apk.get_androidversion_name()
-    graph["app"] = {"pkg": pkg, "version": version}
-    # Gephi (and any node-table consumer) reads per-NODE attributes, not a
-    # top-level object. Stamp pkg/version onto every node so the Data
-    # Laboratory columns populate, and also expose them as flat top-level
-    # keys so a converter reading record["pkg"] finds them regardless of
-    # whether it expects the flat or the nested ("app") shape.
-    graph["pkg"] = pkg
-    graph["version"] = version
+    # Gephi reads per-node attributes, so pkg/version go on every node
+    # as well as on the record (same convention as analyse_flows).
     for node in graph["nodes"]:
-        node.setdefault("pkg", pkg)
-        node.setdefault("version", version)
-    graph["sankey"] = to_sankey(graph)
-    if info["incomplete_base_apk"]:
-        graph["warning"] = ("no native libraries found; likely a split App "
-                            "Bundle base APK. Provide the universal APK or "
-                            "split_config.*.apk files for complete analysis.")
-    return graph
+        node["pkg"] = pkg
+        node["version"] = version
+    return {
+        "app": {"pkg": pkg, "version": version},
+        "pkg": pkg,
+        "version": version,
+        "graph": {"nodes": graph["nodes"], "links": graph["links"]},
+        "summary": graph["summary"],
+    }

@@ -150,7 +150,8 @@ def toolkit_version():
 
 
 from .analyse import (collect_all_files, extract_dex_urls,
-                      analyse_flows, analyse_listening, analyse_acr)
+                      analyse_flows, analyse_listening, analyse_acr,
+                      analyse_network)
 
 
 def base_record(input_path, kind):
@@ -245,13 +246,17 @@ def task_acr(apk_path, options=None):
     rec = dict(base_record(apk_path, "acr"), **result)
     return [rec]
 
-def task_tracker(apk_path, options=None):
-    """Detect trackers in one app: SDK packages, native libs, and
-    network endpoints, combined into a graded confidence."""
-    from .calls.tracker import analyse_tracker
-
-    result = analyse_tracker(apk_path)
-    rec = dict(base_record(apk_path, "tracker"), **result)
+def task_network(apk_path, options=None):
+    """Tracker call graph for one app: app code -> tracker SDK -> network
+    API / framework. The tracker table arrives in ``options``: it is read
+    once by the parent from the metadata results and shared with every
+    task, so no worker re-reads the metadata directory."""
+    options = options or {}
+    result = analyse_network(apk_path, options["trackers"],
+                             level=options.get("level", "method"),
+                             include_internal=options.get("include_internal",
+                                                          False))
+    rec = dict(base_record(apk_path, "network"), **result)
     return [rec]
 
 
@@ -260,7 +265,8 @@ TASKS = {
     "flows": task_flows,
     "metadata": task_metadata,
     "listening": task_listening,
-    "tracker": task_tracker,
+    "acr": task_acr,
+    "network": task_network,
 }
 
 
@@ -348,6 +354,25 @@ def _aggregate_metadata_csv(outdir, csv_path):
     print(f"wrote {len(records)} rows to {csv_path}", file=sys.stderr)
 
 
+def _merge_network_graphml(outdir, graphml_path):
+    """Fold every *.network.jsonl under outdir into ONE GraphML file.
+    Run as a post-pass (like the metadata CSV) so it captures the output
+    of every array shard sharing the directory. The graph stays in plain
+    dicts until the single networkx conversion at the end."""
+    from .calls.trackers import merge_network_records, write_graphml
+
+    paths = sorted(Path(outdir).glob("*.network.jsonl"))
+    if not paths:
+        print(f"no *.network.jsonl files in {outdir}; no graph written",
+              file=sys.stderr)
+        return 1
+    nodes, edges, apps = merge_network_records(paths)
+    n_nodes, n_edges = write_graphml(nodes, edges, graphml_path)
+    print(f"wrote {graphml_path}: {len(apps)} apps, {n_nodes} nodes, "
+          f"{n_edges} edges", file=sys.stderr)
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="cim-apps",
                                      description=__doc__,
@@ -380,6 +405,34 @@ def main(argv=None):
                              "graded high/medium/low/none")
     add_common(s, "--apk", "path to one .apk/.xapk file")
 
+    s = subs.add_parser("network",
+                        help="tracker call graph: app code -> tracker SDK "
+                             "-> network API, per app, then one combined "
+                             "GraphML")
+    add_common(s, "--apk", "path to one .apk/.xapk file")
+    s.add_argument("--input-dir", required=True,
+                   help="directory of *.metadata.jsonl results; their "
+                        "tracker lists are read once into one shared set "
+                        "and every APK is scanned for all of them")
+    s.add_argument("--graphml", metavar="FILE",
+                   help="combined graph written after the last APK "
+                        "(default: OUTDIR/network.graphml). Skipped when "
+                        "--task-count > 1: run network-merge once the "
+                        "array has finished")
+    s.add_argument("--level", choices=["method", "class"], default="method",
+                   help="one node per method (default) or per class "
+                        "(much smaller graph)")
+    s.add_argument("--include-internal", action="store_true",
+                   help="keep calls that stay inside a single tracker")
+
+    s = subs.add_parser("network-merge",
+                        help="combine existing *.network.jsonl files into "
+                             "one GraphML (run after a SLURM array)")
+    s.add_argument("--outdir", required=True,
+                   help="directory holding the *.network.jsonl files")
+    s.add_argument("--graphml", metavar="FILE",
+                   help="output file (default: OUTDIR/network.graphml)")
+
     s = subs.add_parser("flows",
                         help="trace inputs -> AI modules -> onward processes")
     add_common(s, "--apk", "path to one .apk file")
@@ -396,6 +449,11 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
 
+    if args.command == "network-merge":
+        return _merge_network_graphml(
+            args.outdir,
+            args.graphml or Path(args.outdir) / "network.graphml")
+
     all_inputs = collect_inputs(args.apk, args.apk_list, args.apk_dir,
                                 getattr(args, "recursive", False))
     out_names = make_output_names(all_inputs, args.command)
@@ -408,8 +466,31 @@ def main(argv=None):
     options = {"trace": getattr(args, "trace", False),
                "profile": getattr(args, "profile", False),
                "no_dex_trace": getattr(args, "no_dex_trace", False)}
+    if args.command == "network":
+        from .calls.trackers import tracker_list
+        # Read the metadata results ONCE; the same table goes to every task.
+        trackers = tracker_list(args.input_dir)
+        if not trackers:
+            raise SystemExit(f"no trackers found in *.metadata.jsonl under "
+                             f"{args.input_dir}; run the metadata workflow "
+                             f"first")
+        print(f"{len(trackers)} tracker signatures from {args.input_dir}",
+              file=sys.stderr)
+        options.update(trackers=trackers, level=args.level,
+                       include_internal=args.include_internal)
+
     rc = run_batch(args.command, inputs, args.outdir, args.workers,
                    args.force, options, out_names)
+
+    if args.command == "network":
+        if args.task_count > 1:
+            print("array run: combine the shards afterwards with "
+                  f"`cim-apps network-merge --outdir {args.outdir}`",
+                  file=sys.stderr)
+        else:
+            rc = _merge_network_graphml(
+                args.outdir,
+                args.graphml or Path(args.outdir) / "network.graphml") or rc
 
     csv_path = getattr(args, "csv", None)
     if csv_path:

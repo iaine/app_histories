@@ -5,7 +5,7 @@ workflows. Every workflow shares the same input and batching options,
 so anything you learn about running one applies to the others.
 
 ```
-cim-apps {metadata, classify, flows} [input] --outdir DIR [options]
+cim-apps {metadata, classify, flows, listening, acr, network} [input] --outdir DIR [options]
 ```
 
 ## Choosing inputs
