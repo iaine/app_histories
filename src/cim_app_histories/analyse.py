@@ -514,15 +514,23 @@ def analyse_network(apk_path, trackers, level="method",
         raise ValueError(f"no readable DEX in {apk_path}")
     pkg = apk.get_package()
     version = apk.get_androidversion_name()
+    # The Android versionCode is the time axis of the combined graph: it
+    # is the one number guaranteed to increase with every release of an
+    # app. None when the manifest has no usable integer.
+    try:
+        version_code = int(apk.get_androidversion_code())
+    except (TypeError, ValueError):
+        version_code = None
     # Gephi reads per-node attributes, so pkg/version go on every node
     # as well as on the record (same convention as analyse_flows).
     for node in graph["nodes"]:
         node["pkg"] = pkg
         node["version"] = version
     return {
-        "app": {"pkg": pkg, "version": version},
+        "app": {"pkg": pkg, "version": version, "version_code": version_code},
         "pkg": pkg,
         "version": version,
+        "version_code": version_code,
         "graph": {"nodes": graph["nodes"], "links": graph["links"]},
         "summary": graph["summary"],
     }

@@ -1,6 +1,6 @@
 """
 Tracker network call graph: the shared tracker table, the per-app graph
-builder, the corpus merge and the GraphML export.
+builder, the corpus merge, the version-code timeline and the GEXF export.
 """
 import json
 import sys
@@ -11,7 +11,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cim_app_histories.calls.trackers import (       # noqa: E402
-    tracker_list, build_tracker_graph, merge_network_records, write_graphml)
+    tracker_list, build_tracker_graph, merge_network_records, write_gexf,
+    _spells)
 
 
 # ---- DEX doubles (no androguard needed) ------------------------------
@@ -205,13 +206,16 @@ def test_summary_counts():
     assert s["nodes"] == sum(s["node_kinds"].values())
 
 
-# ---- merge + GraphML -------------------------------------------------
-def write_record(path, pkg, graph):
-    for n in graph["nodes"]:
-        n["pkg"] = pkg
+# ---- merge, timeline + GEXF ------------------------------------------
+def write_record(path, pkg, graph, code=1, version="1.0"):
     path.write_text(json.dumps(
-        {"pkg": pkg, "version": "1.0",
+        {"pkg": pkg, "version": version, "version_code": code,
          "graph": {"nodes": graph["nodes"], "links": graph["links"]}}) + "\n")
+
+
+def graph_of(*methods):
+    return build_tracker_graph([_Dex(list(methods))], TRACKERS,
+                               network_apis=NET)
 
 
 def two_app_corpus(tmp_path):
@@ -222,10 +226,21 @@ def two_app_corpus(tmp_path):
     return sorted(tmp_path.glob("*.network.jsonl"))
 
 
+def three_release_corpus(tmp_path):
+    """One app, versions 10/20/30. The app calls AppsFlyer in 10 and 30
+    but not in 20; AppsFlyer reaches the network in all three."""
+    send = _Method(AF2, "send", ["Ljava/net/HttpURLConnection;->connect()V"])
+    call = _Method(APP, "onCreate", [f"{AF}->start()V"])
+    for code, methods in ((10, [call, send]), (20, [send]), (30, [call, send])):
+        write_record(tmp_path / f"demo-{code}.network.jsonl", "com.demo",
+                     graph_of(*methods), code=code, version=f"1.{code}")
+    return sorted(tmp_path.glob("*.network.jsonl"))
+
+
 def test_merge_shares_trackers_and_separates_app_code(tmp_path):
     nodes, edges, apps = merge_network_records(two_app_corpus(tmp_path))
     assert [a["pkg"] for a in apps] == ["com.one", "com.two"]
-    # the same SDK method in both apps is one node, seen twice
+    # the same SDK method in both apps is one node, seen in two apps
     assert nodes[f"{AF}->start()V"]["apps"] == 2
     # identical app class names stay apart
     assert f"com.one::{APP}->onCreate()V" in nodes
@@ -236,17 +251,92 @@ def test_merge_shares_trackers_and_separates_app_code(tmp_path):
     assert e["apps"] == 2 and e["weight"] == 2
 
 
-def test_graphml_round_trip(tmp_path):
+def test_spell_runs_until_the_next_release_or_the_end_of_the_timeline():
+    releases = {"p": [10, 20, 30]}
+    assert _spells({("p", 10)}, releases, 30) == [(10.0, 19.0)]
+    assert _spells({("p", 30)}, releases, 30) == [(30.0, 30.0)]
+    # another app has newer releases: p's newest still runs to the end
+    assert _spells({("p", 30)}, releases, 99) == [(30.0, 99.0)]
+
+
+def test_consecutive_releases_join_into_one_spell():
+    releases = {"p": [10, 20, 30]}
+    assert _spells({("p", 10), ("p", 20)}, releases, 30) == [(10.0, 29.0)]
+    assert _spells({("p", 10), ("p", 20), ("p", 30)}, releases, 30) == \
+        [(10.0, 30.0)]
+
+
+def test_a_gap_gives_two_spells():
+    assert _spells({("p", 10), ("p", 30)}, {"p": [10, 20, 30]}, 30) == \
+        [(10.0, 19.0), (30.0, 30.0)]
+
+
+def test_spells_from_different_apps_are_combined():
+    releases = {"a": [5, 50], "b": [20]}
+    # a@5 runs 5..49; b@20 is b's newest so runs to the end, 50
+    assert _spells({("a", 5), ("b", 20)}, releases, 50) == [(5.0, 50.0)]
+
+
+def test_records_without_a_version_code_have_no_spell():
+    assert _spells({("p", None)}, {}, 0) == []
+
+
+def test_timeline_across_releases_of_one_app(tmp_path):
+    nodes, edges, apps = merge_network_records(three_release_corpus(tmp_path))
+    assert [a["version_code"] for a in apps] == [10, 20, 30]
+
+    # the app's own method is ONE node across versions, absent in 20
+    caller = nodes[f"com.demo::{APP}->onCreate()V"]
+    assert caller["releases"] == 2 and caller["apps"] == 1
+    assert caller["spells"] == [(10.0, 19.0), (30.0, 30.0)]
+    assert edges[(f"com.demo::{APP}->onCreate()V", f"{AF}->start()V")][
+        "spells"] == [(10.0, 19.0), (30.0, 30.0)]
+
+    # the tracker's network call is there throughout
+    net = edges[(f"{AF2}->send()V", "Ljava/net/HttpURLConnection;->connect()V")]
+    assert net["releases"] == 3 and net["spells"] == [(10.0, 30.0)]
+
+
+def test_merge_tolerates_records_written_before_version_codes(tmp_path):
+    g = build_tracker_graph([demo_dex()], TRACKERS)
+    (tmp_path / "old.network.jsonl").write_text(json.dumps(
+        {"pkg": "com.old", "version": "1",
+         "graph": {"nodes": g["nodes"], "links": g["links"]}}) + "\n")
+    nodes, _, apps = merge_network_records([tmp_path / "old.network.jsonl"])
+    assert apps[0]["version_code"] is None
+    assert all("spells" not in n for n in nodes.values())
+
+
+def test_gexf_round_trip_is_dynamic(tmp_path):
     nx = pytest.importorskip("networkx")
-    nodes, edges, _ = merge_network_records(two_app_corpus(tmp_path))
-    out = tmp_path / "graph" / "network.graphml"
-    n_nodes, n_edges = write_graphml(nodes, edges, out)
-    g = nx.read_graphml(out)
+    nodes, edges, _ = merge_network_records(three_release_corpus(tmp_path))
+    out = tmp_path / "graph" / "network.gexf"
+    n_nodes, n_edges = write_gexf(nodes, edges, out)
+
+    text = out.read_text()
+    assert 'mode="dynamic"' in text and 'timeformat="double"' in text
+    assert '<spell start="10.0" end="19.0"' in text
+    assert '<spell start="30.0" end="30.0"' in text
+
+    g = nx.read_gexf(out)
     assert g.is_directed()
     assert (g.number_of_nodes(), g.number_of_edges()) == (n_nodes, n_edges)
     assert g.nodes[f"{AF}->start()V"]["tracker"] == "com.appsflyer"
-    assert g.nodes[f"{AF}->start()V"]["apps"] == 2
+    assert g.nodes[f"{AF}->start()V"]["label"] == "AppsFlyerLib.start"
+    e = g.edges[f"{AF2}->send()V", "Ljava/net/HttpURLConnection;->connect()V"]
+    assert e["relation"] == "network" and e["weight"] == 3
+    assert e["spells"] == [(10.0, 30.0)]            # reads back in networkx
     assert not list(out.parent.glob("*.tmp"))
+
+
+def test_writing_gexf_leaves_the_tables_reusable(tmp_path):
+    """networkx pops 'spells' while writing; the caller's tables must
+    not be emptied by that."""
+    pytest.importorskip("networkx")
+    nodes, edges, _ = merge_network_records(three_release_corpus(tmp_path))
+    write_gexf(nodes, edges, tmp_path / "a.gexf")
+    assert any("spells" in n for n in nodes.values())
+    assert any("spells" in e for e in edges.values())
 
 
 def test_building_the_graph_does_not_import_networkx():
@@ -262,7 +352,7 @@ def test_building_the_graph_does_not_import_networkx():
 
 
 # ---- CLI -------------------------------------------------------------
-def test_cli_reads_trackers_once_and_writes_one_graphml(tmp_path, monkeypatch):
+def test_cli_reads_trackers_once_and_writes_one_gexf(tmp_path, monkeypatch):
     from cim_app_histories import cli
     import cim_app_histories.calls.trackers as tr
 
@@ -286,7 +376,7 @@ def test_cli_reads_trackers_once_and_writes_one_graphml(tmp_path, monkeypatch):
         seen.append(sorted(trackers))
         g = build_tracker_graph([demo_dex()], trackers, network_apis=NET)
         pkg = Path(apk_path).stem
-        return {"pkg": pkg, "version": "1",
+        return {"pkg": pkg, "version": "1", "version_code": 7,
                 "graph": {"nodes": g["nodes"], "links": g["links"]},
                 "summary": g["summary"]}
 
@@ -298,8 +388,8 @@ def test_cli_reads_trackers_once_and_writes_one_graphml(tmp_path, monkeypatch):
     assert len(reads) == 1                       # metadata read once
     assert seen == [["com.appsflyer"]] * 2       # every APK gets the full set
     assert (out / "a.network.jsonl").exists() and (out / "b.network.jsonl").exists()
-    assert len(list(out.glob("*.graphml"))) == 1 # ONE combined graph
-    assert (out / "network.graphml").stat().st_size > 0
+    assert len(list(out.glob("*.gexf"))) == 1    # ONE combined graph
+    assert 'mode="dynamic"' in (out / "network.gexf").read_text()
 
 
 def test_cli_array_run_defers_the_graph_to_network_merge(tmp_path, monkeypatch):
@@ -322,10 +412,10 @@ def test_cli_array_run_defers_the_graph_to_network_merge(tmp_path, monkeypatch):
               "--outdir", str(out), "--workers", "1", "--task-count", "2"]
     for i in ("0", "1"):
         assert cli.main(common + ["--task-index", i]) == 0
-    assert not list(out.glob("*.graphml"))       # no shard writes the graph
+    assert not list(out.glob("*.gexf"))          # no shard writes the graph
 
     assert cli.main(["network-merge", "--outdir", str(out)]) == 0
-    assert (out / "network.graphml").exists()
+    assert (out / "network.gexf").exists()
 
 
 def test_cli_refuses_to_run_without_any_trackers(tmp_path):

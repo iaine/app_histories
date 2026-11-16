@@ -19,11 +19,11 @@ Design rules:
   real app (Otter); the invoke scan took 39s and about 0.9 GB there.
 * PLAIN CONTAINERS WHILE BUILDING. Nodes and edges accumulate in dicts
   (cheap to grow, free de-duplication). networkx is only touched once, in
-  ``write_graphml``, after every app has been merged.
+  ``write_gexf``, after every app has been merged.
 * PURE AND PARALLEL-SAFE. No androguard import at module level, no
   printing. ``build_tracker_graph`` takes DEX-like objects and returns
   data, so it drops into the CLI's per-task batch model. Only
-  ``tracker_list``, ``merge_network_records`` and ``write_graphml`` touch
+  ``tracker_list``, ``merge_network_records`` and ``write_gexf`` touch
   the disk.
 
 An edge means "this method contains a call to that one". Interface
@@ -259,23 +259,66 @@ def _count(values):
 
 
 # ---------------------------------------------------------------------------
-# Corpus merge and GraphML (the only place networkx is used)
+# Corpus merge and GEXF (the only place networkx is used)
 # ---------------------------------------------------------------------------
+def _spells(seen, releases, horizon):
+    """Time spans for one node or edge, on the version-code axis.
+
+    An element seen in release ``v`` of an app exists from ``v`` until
+    the release before that app's next one in the corpus. In an app's
+    newest release it runs to ``horizon``, the end of the timeline. So
+    something present in 10 and 30 but not 20 gets two spans, and the
+    timeline shows it leave and come back.
+
+    Spans are always closed: GEXF allows an open end, but networkx
+    cannot read one back.
+
+    :param seen: set of ``(pkg, version_code)`` the element appeared in
+    :param releases: ``{pkg: sorted version codes in the corpus}``
+    :param horizon: the largest version code in the corpus
+    :returns: list of ``(start, end)`` floats
+    """
+    spans = []
+    for pkg, code in seen:
+        if code is None:
+            continue
+        codes = releases[pkg]
+        nxt = codes.index(code) + 1
+        spans.append((code, codes[nxt] - 1 if nxt < len(codes) else horizon))
+    spans.sort()
+
+    merged = []
+    for start, end in spans:
+        if merged and start <= merged[-1][1] + 1:   # overlap or back-to-back
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    # floats: networkx then writes timeformat="double", which Gephi reads
+    return [(float(a), float(b)) for a, b in merged]
+
+
 def merge_network_records(paths):
     """Fold per-app ``*.network.jsonl`` records into one node table and
     one edge table, still as plain dicts.
 
     App-code nodes are kept separate per app (``<pkg>::<id>``): two apps
     both having a class ``La/b;`` share nothing but an obfuscated name.
-    Tracker, network-API and external nodes are shared by descriptor, so
-    the same SDK in two apps is ONE node and the apps meet there. Shared
-    nodes carry ``apps``, the number of apps they were seen in.
+    They are NOT separated per version, so a method that survives from
+    one release to the next is one node with a long life. Tracker,
+    network-API and external nodes are shared by descriptor, so the same
+    SDK in two apps is one node and the apps meet there.
+
+    Every node and edge carries ``spells``: when it exists on the
+    version-code timeline (see :func:`_spells`). ``apps`` counts distinct
+    packages it was seen in, ``releases`` distinct (package, version)
+    pairs.
 
     :param paths: iterable of ``*.network.jsonl`` paths
     :returns: ``(nodes, edges, apps)`` -- ``{id: attrs}``,
-        ``{(source, target): attrs}`` and the list of merged apps
+        ``{(source, target): attrs}`` and the list of merged releases
     """
     nodes, edges, apps = {}, {}, []
+    releases = {}                       # pkg -> set of version codes
     for path in paths:
         with open(path, encoding="utf-8") as fh:
             for line in fh:
@@ -288,7 +331,13 @@ def merge_network_records(paths):
                     continue
                 pkg = rec.get("pkg") or Path(path).name
                 version = rec.get("version") or ""
-                apps.append({"pkg": pkg, "version": version})
+                code = rec.get("version_code")
+                code = code if isinstance(code, int) else None
+                stamp = (pkg, code)
+                apps.append({"pkg": pkg, "version": version,
+                             "version_code": code})
+                if code is not None:
+                    releases.setdefault(pkg, set()).add(code)
 
                 def gid(nid, kind, _pkg=pkg):
                     return f"{_pkg}::{nid}" if kind == "app" else nid
@@ -305,29 +354,39 @@ def merge_network_records(paths):
                             "tracker": n.get("tracker", ""),
                             "category": n.get("category", ""),
                             "pkg": pkg if n["kind"] == "app" else "",
-                            "version": version if n["kind"] == "app" else "",
-                            "apps": 0,
+                            "_seen": set(),
                         }
-                    cur["apps"] += 1
+                    cur["_seen"].add(stamp)
                 for l in graph["links"]:
                     key = (gid(l["source"], kinds.get(l["source"], "")),
                            gid(l["target"], kinds.get(l["target"], "")))
                     cur = edges.get(key)
                     if cur is None:
-                        edges[key] = {"kind": l["kind"],
-                                      "weight": l.get("weight", 1), "apps": 1}
-                    else:
-                        cur["weight"] += l.get("weight", 1)
-                        cur["apps"] += 1
+                        cur = edges[key] = {"kind": l["kind"], "weight": 0,
+                                            "_seen": set()}
+                    cur["weight"] += l.get("weight", 1)
+                    cur["_seen"].add(stamp)
+
+    releases = {pkg: sorted(codes) for pkg, codes in releases.items()}
+    horizon = max((codes[-1] for codes in releases.values()), default=0)
+    for table in (nodes, edges):
+        for attrs in table.values():
+            seen = attrs.pop("_seen")
+            attrs["apps"] = len({pkg for pkg, _ in seen})
+            attrs["releases"] = len(seen)
+            spells = _spells(seen, releases, horizon)
+            if spells:                  # no version code -> always visible
+                attrs["spells"] = spells
     return nodes, edges, apps
 
 
-def write_graphml(nodes, edges, path):
+def write_gexf(nodes, edges, path):
     """Translate the finished node and edge tables into a networkx
-    ``DiGraph`` and write it as GraphML. Called once, at the very end.
+    ``DiGraph`` and write it as GEXF. Called once, at the very end.
 
-    GraphML attributes must be scalars, which the tables already are
-    (strings and ints only).
+    GEXF rather than GraphML because it can say WHEN a node or edge
+    exists: the ``spells`` become time spans, and Gephi opens the file
+    with its timeline enabled.
 
     :returns: ``(node count, edge count)``
     """
@@ -335,14 +394,21 @@ def write_graphml(nodes, edges, path):
 
     graph = nx.DiGraph()
     graph.add_nodes_from(nodes.items())
-    graph.add_edges_from((s, t, attrs) for (s, t), attrs in edges.items())
+    # GEXF reserves an edge attribute called "kind" for edge TYPES, which
+    # makes Gephi treat the graph as a multigraph. Ours is a plain label,
+    # so it travels as "relation".
+    graph.add_edges_from(
+        (s, t, {("relation" if k == "kind" else k): v
+                for k, v in attrs.items()})
+        for (s, t), attrs in edges.items())
 
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
+    counts = graph.number_of_nodes(), graph.number_of_edges()
     try:
-        nx.write_graphml(graph, tmp)
+        nx.write_gexf(graph, tmp)
         tmp.replace(path)               # never leave a half-written graph
     finally:
         tmp.unlink(missing_ok=True)
-    return graph.number_of_nodes(), graph.number_of_edges()
+    return counts

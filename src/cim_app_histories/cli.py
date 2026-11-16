@@ -354,12 +354,13 @@ def _aggregate_metadata_csv(outdir, csv_path):
     print(f"wrote {len(records)} rows to {csv_path}", file=sys.stderr)
 
 
-def _merge_network_graphml(outdir, graphml_path):
-    """Fold every *.network.jsonl under outdir into ONE GraphML file.
-    Run as a post-pass (like the metadata CSV) so it captures the output
-    of every array shard sharing the directory. The graph stays in plain
-    dicts until the single networkx conversion at the end."""
-    from .calls.trackers import merge_network_records, write_graphml
+def _merge_network_gexf(outdir, gexf_path):
+    """Fold every *.network.jsonl under outdir into ONE GEXF file with a
+    version-code timeline. Run as a post-pass (like the metadata CSV) so
+    it captures the output of every array shard sharing the directory.
+    The graph stays in plain dicts until the single networkx conversion
+    at the end."""
+    from .calls.trackers import merge_network_records, write_gexf
 
     paths = sorted(Path(outdir).glob("*.network.jsonl"))
     if not paths:
@@ -367,9 +368,15 @@ def _merge_network_graphml(outdir, graphml_path):
               file=sys.stderr)
         return 1
     nodes, edges, apps = merge_network_records(paths)
-    n_nodes, n_edges = write_graphml(nodes, edges, graphml_path)
-    print(f"wrote {graphml_path}: {len(apps)} apps, {n_nodes} nodes, "
+    n_nodes, n_edges = write_gexf(nodes, edges, gexf_path)
+    untimed = sum(1 for a in apps if a["version_code"] is None)
+    print(f"wrote {gexf_path}: {len(apps)} releases of "
+          f"{len({a['pkg'] for a in apps})} apps, {n_nodes} nodes, "
           f"{n_edges} edges", file=sys.stderr)
+    if untimed:
+        print(f"warning: {untimed} record(s) have no version_code and are "
+              f"not on the timeline; re-run them with --force",
+              file=sys.stderr)
     return 0
 
 
@@ -408,15 +415,15 @@ def main(argv=None):
     s = subs.add_parser("network",
                         help="tracker call graph: app code -> tracker SDK "
                              "-> network API, per app, then one combined "
-                             "GraphML")
+                             "GEXF with a version-code timeline")
     add_common(s, "--apk", "path to one .apk/.xapk file")
     s.add_argument("--input-dir", required=True,
                    help="directory of *.metadata.jsonl results; their "
                         "tracker lists are read once into one shared set "
                         "and every APK is scanned for all of them")
-    s.add_argument("--graphml", metavar="FILE",
+    s.add_argument("--gexf", metavar="FILE",
                    help="combined graph written after the last APK "
-                        "(default: OUTDIR/network.graphml). Skipped when "
+                        "(default: OUTDIR/network.gexf). Skipped when "
                         "--task-count > 1: run network-merge once the "
                         "array has finished")
     s.add_argument("--level", choices=["method", "class"], default="method",
@@ -427,11 +434,11 @@ def main(argv=None):
 
     s = subs.add_parser("network-merge",
                         help="combine existing *.network.jsonl files into "
-                             "one GraphML (run after a SLURM array)")
+                             "one GEXF (run after a SLURM array)")
     s.add_argument("--outdir", required=True,
                    help="directory holding the *.network.jsonl files")
-    s.add_argument("--graphml", metavar="FILE",
-                   help="output file (default: OUTDIR/network.graphml)")
+    s.add_argument("--gexf", metavar="FILE",
+                   help="output file (default: OUTDIR/network.gexf)")
 
     s = subs.add_parser("flows",
                         help="trace inputs -> AI modules -> onward processes")
@@ -450,9 +457,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if args.command == "network-merge":
-        return _merge_network_graphml(
+        return _merge_network_gexf(
             args.outdir,
-            args.graphml or Path(args.outdir) / "network.graphml")
+            args.gexf or Path(args.outdir) / "network.gexf")
 
     all_inputs = collect_inputs(args.apk, args.apk_list, args.apk_dir,
                                 getattr(args, "recursive", False))
@@ -488,9 +495,9 @@ def main(argv=None):
                   f"`cim-apps network-merge --outdir {args.outdir}`",
                   file=sys.stderr)
         else:
-            rc = _merge_network_graphml(
+            rc = _merge_network_gexf(
                 args.outdir,
-                args.graphml or Path(args.outdir) / "network.graphml") or rc
+                args.gexf or Path(args.outdir) / "network.gexf") or rc
 
     csv_path = getattr(args, "csv", None)
     if csv_path:
