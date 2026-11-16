@@ -78,6 +78,58 @@ timeline; the merge warns about them. Re-run those APKs with `--force`.
 - `--include-internal` keeps calls that stay inside one tracker. They are
   dropped by default: they were nearly half of all edges on a real app.
 
+## Embeddedness per era: `network-embed`
+
+How deeply is each tracker wired into an app, and how does that change
+across releases? `network-embed` answers from the `*.network.jsonl` files
+already written. It opens no APK and takes under a second.
+
+```bash
+cim-apps network-embed --input-dir results/
+cim-apps network-embed --input-dir results/ --era minor --csv eras.csv
+```
+
+It writes `network.embeddedness.csv`, one row per app, era and tracker.
+
+Releases are grouped into eras by version name:
+
+| `--era` | `3.103.0-6392` falls in |
+|---------|--------------------------|
+| `major` (default) | `3.*` |
+| `minor` | `3.103.*` |
+| `release` | `3.103.0-6392` (no grouping) |
+
+Major versions are not a consistent unit: one app reaches 43.x while
+another stays on 3.x for years. Choose the level that splits each app
+into a useful number of eras, and compare eras within an app only.
+
+| Column | Meaning |
+|--------|---------|
+| `releases`, `releases_present`, `presence` | releases in the era, how many contain the tracker, and that share |
+| `app_callers` | distinct methods outside the tracker that call it |
+| `call_sites` | how many times they call it |
+| `entry_points` | distinct tracker methods they call: how much of its API is used |
+| `tracker_nodes` | distinct tracker methods in the graph |
+| `apk_code_called` | distinct methods elsewhere in the APK that the tracker calls |
+| `network_apis`, `network_call_sites` | network classes the tracker reaches, and how often |
+| `other_trackers` | other trackers it calls |
+| `app_caller_share` | `app_callers` divided by all methods scanned (method level only) |
+
+Each count is the **mean over the releases in which the tracker is
+present**. `presence` is kept apart so that "in half the releases" is not
+mistaken for "half as embedded".
+
+Things to bear in mind:
+
+- "App" means everything in the APK outside the tracker packages,
+  bundled libraries included. They cannot be separated reliably once an
+  app is obfuscated.
+- These are counts, not a centrality score. Eigenvector centrality is all
+  zeros on a one-way call graph, and its scores cannot be compared between
+  eras.
+- Run every release at the same `--level`. Method-level and class-level
+  counts are not comparable, and the command warns if an era mixes them.
+
 ## SLURM arrays
 
 With `--task-count` above 1 no shard writes the combined graph. Run the

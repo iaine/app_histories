@@ -380,6 +380,30 @@ def _merge_network_gexf(outdir, gexf_path):
     return 0
 
 
+def _network_embeddedness(input_dir, csv_path, era_level):
+    """Tracker embeddedness per app, per era, from existing
+    *.network.jsonl files. Reads results only; opens no APK."""
+    from .calls.embeddedness import (iter_network_records,
+                                     embeddedness_table,
+                                     write_embeddedness_csv)
+
+    paths = sorted(Path(input_dir).glob("*.network.jsonl"))
+    if not paths:
+        print(f"no *.network.jsonl files in {input_dir}; nothing to "
+              f"measure. Run `cim-apps network` first", file=sys.stderr)
+        return 1
+    rows = embeddedness_table(iter_network_records(paths), era_level)
+    write_embeddedness_csv(rows, csv_path)
+    eras = {(r["pkg"], r["era"]) for r in rows}
+    print(f"wrote {csv_path}: {len(rows)} rows, "
+          f"{len({r['pkg'] for r in rows})} apps, {len(eras)} eras "
+          f"(grouped by {era_level})", file=sys.stderr)
+    if any("+" in r["level"] for r in rows):
+        print("warning: some eras mix method-level and class-level "
+              "records; their counts are not comparable", file=sys.stderr)
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="cim-apps",
                                      description=__doc__,
@@ -440,6 +464,21 @@ def main(argv=None):
     s.add_argument("--gexf", metavar="FILE",
                    help="output file (default: OUTDIR/network.gexf)")
 
+    s = subs.add_parser("network-embed",
+                        help="how embedded each tracker is in each app, "
+                             "per era of releases, from existing "
+                             "*.network.jsonl files")
+    s.add_argument("--input-dir", required=True,
+                   help="directory holding the *.network.jsonl files")
+    s.add_argument("--era", choices=["major", "minor", "release"],
+                   default="major",
+                   help="how releases are grouped: major puts all 3.* "
+                        "together (default), minor all 3.103.*, release "
+                        "keeps every version separate")
+    s.add_argument("--csv", metavar="FILE",
+                   help="output table (default: "
+                        "INPUT_DIR/network.embeddedness.csv)")
+
     s = subs.add_parser("flows",
                         help="trace inputs -> AI modules -> onward processes")
     add_common(s, "--apk", "path to one .apk file")
@@ -455,6 +494,12 @@ def main(argv=None):
                         "use for corpus runs that only need inputs")
 
     args = parser.parse_args(argv)
+
+    if args.command == "network-embed":
+        return _network_embeddedness(
+            args.input_dir,
+            args.csv or Path(args.input_dir) / "network.embeddedness.csv",
+            args.era)
 
     if args.command == "network-merge":
         return _merge_network_gexf(
