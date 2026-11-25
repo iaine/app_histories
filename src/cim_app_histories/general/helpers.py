@@ -74,16 +74,16 @@ class Helper():
     def country_lang(flist, language=""):
         return ','.join(list(set( [lang[1] for lang in flist if lang[0] == language] )))
 
-    def localisation(self, df, filter_type="flatten", lang = "", country=""):
+    def localisation(self, df, filter_type="flatten", lang = "", contry=""):
         """
             Find language in df
         """
 
         localisation_df = df[['version_code', 'localisation']].sort_values('version_code').reset_index(drop=True)
         if filter_type == "country":
-            localisation_df['flattened'] = localisation_df['localisation'].apply(self.country_lang, lang)
+            localisation_df['flattened'] = localisation_df['localisation'].apply(self.country_lang, language=lang)
         else:
-            localisation_df['flattened'] = localisation_df['localisation'].apply(self.flatten_list, country)
+            localisation_df['flattened'] = localisation_df['localisation'].apply(self.flatten_list, country=contry)
 
         # Split language strings into lists
         localisation_df["languages"] = (
