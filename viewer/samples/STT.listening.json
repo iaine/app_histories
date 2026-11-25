@@ -1,0 +1,212 @@
+{
+  "app": {
+    "pkg": "com.demo.stt",
+    "version": "1.2.3"
+  },
+  "sources": {
+    "microphone": {
+      "modules": [
+        "lib/arm64/libcapture.so"
+      ],
+      "evidence": {
+        "lib/arm64/libcapture.so": {
+          "keywords": [
+            "audiorecord",
+            "pcm_in",
+            "麦克风"
+          ],
+          "apis": [
+            "android/media/audiorecord"
+          ],
+          "permissions": [
+            "android.permission.RECORD_AUDIO"
+          ]
+        }
+      }
+    }
+  },
+  "chain": [
+    {
+      "stage": "capture",
+      "module": "lib/arm64/libcapture.so",
+      "vendor": "unknown",
+      "operations": [
+        "audiorecord",
+        "pcm_in"
+      ],
+      "parameters": {
+        "sample_rate": [
+          48000
+        ],
+        "buffer_size": [
+          3840
+        ],
+        "channel_layout": [
+          "stereo"
+        ],
+        "codecs": [
+          "pcm"
+        ]
+      }
+    },
+    {
+      "stage": "dsp",
+      "module": "lib/arm64/libasrfeat.so",
+      "vendor": "google",
+      "operations": [
+        "denoise",
+        "resample",
+        "vad",
+        "降噪"
+      ],
+      "parameters": {
+        "n_fft": [
+          512
+        ],
+        "hop_length": [
+          160
+        ],
+        "n_mels": [
+          80
+        ],
+        "sample_rate": [
+          16000
+        ],
+        "channel_layout": [
+          "mono"
+        ]
+      }
+    },
+    {
+      "stage": "features",
+      "module": "lib/arm64/libasrfeat.so",
+      "vendor": "google",
+      "operations": [
+        "fbank",
+        "fft",
+        "log_mel",
+        "mel"
+      ],
+      "parameters": {
+        "n_fft": [
+          512
+        ],
+        "hop_length": [
+          160
+        ],
+        "n_mels": [
+          80
+        ],
+        "sample_rate": [
+          16000
+        ],
+        "channel_layout": [
+          "mono"
+        ]
+      }
+    },
+    {
+      "stage": "inference",
+      "module": "lib/arm64/libasrfeat.so",
+      "vendor": "google",
+      "operations": [
+        "asr",
+        "interpreter",
+        "speech_to_text",
+        "tflite",
+        "识别"
+      ],
+      "parameters": {
+        "n_fft": [
+          512
+        ],
+        "hop_length": [
+          160
+        ],
+        "n_mels": [
+          80
+        ],
+        "sample_rate": [
+          16000
+        ],
+        "channel_layout": [
+          "mono"
+        ]
+      },
+      "task": "speech_to_text"
+    },
+    {
+      "stage": "inference",
+      "model": "assets/asr_v3.tflite",
+      "format": "tflite",
+      "vendor": "google",
+      "referenced_by": [
+        "lib/arm64/libasrfeat.so"
+      ],
+      "task": "speech_to_text"
+    },
+    {
+      "stage": "output",
+      "module": "lib/arm64/libasrfeat.so",
+      "vendor": "google",
+      "operations": [
+        "transcript",
+        "upload"
+      ]
+    },
+    {
+      "stage": "output",
+      "module": "lib/arm64/libasrfeat.so",
+      "kind": "endpoint",
+      "target": "api.stt.example.com/v1/upload/audio",
+      "categories": [
+        "api",
+        "audio",
+        "upload"
+      ]
+    }
+  ],
+  "parameter_transitions": [
+    {
+      "parameter": "sample_rate",
+      "from_stage": "capture",
+      "from": [
+        48000
+      ],
+      "to_stage": "dsp",
+      "to": [
+        16000
+      ]
+    },
+    {
+      "parameter": "channel_layout",
+      "from_stage": "capture",
+      "from": [
+        "stereo"
+      ],
+      "to_stage": "dsp",
+      "to": [
+        "mono"
+      ]
+    }
+  ],
+  "summary": {
+    "sources": [
+      "microphone"
+    ],
+    "stages_present": [
+      "capture",
+      "dsp",
+      "features",
+      "inference",
+      "output"
+    ],
+    "inference_tasks": [
+      "speech_to_text"
+    ],
+    "endpoints": [
+      "api.stt.example.com/v1/upload/audio"
+    ],
+    "audio_modules": 2
+  }
+}

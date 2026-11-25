@@ -1,0 +1,27 @@
+{
+ "input": "com.example.app_1.0.apk",
+ "analysis": "metadata",
+ "toolkit_version": "0.0.2",
+ "applicationname": "App",
+ "pkg": "com.example.app",
+ "version_code": "10",
+ "android_name": "1.0",
+ "permissions": "android.permission.INTERNET;android.permission.ACCESS_NETWORK_STATE",
+ "activities": "MainActivity;SettingsActivity",
+ "intents": "android.intent.action.MAIN",
+ "localisation": [
+  [
+   "es",
+   "",
+   ""
+  ],
+  [
+   "en",
+   "",
+   ""
+  ]
+ ],
+ "ab": [
+  "com.google.firebase.analytics"
+ ]
+}
