@@ -120,6 +120,8 @@ class Helper():
             sorted(presence.index, key=lambda x: first_seen[x])
         ]
 
+        return presence
+
 
     def list_similarity(self, dict_of_lists):
         '''
