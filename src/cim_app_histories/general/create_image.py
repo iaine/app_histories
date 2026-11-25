@@ -7,6 +7,8 @@ import matplotlib.animation as animation
 from PIL import Image
 import numpy as np
 
+import seaborn as sns
+
 class Animate():
 
     def __init__(self):
@@ -59,3 +61,86 @@ class Animate():
             ax.set_axis_off()
 
         plt.savefig(figuretitle)    
+
+    def visualise_changes(self, permissions_df, added, removed, figurepath):
+        """
+            Scatterplot of the changes for permissions
+
+            :param permissions_df
+            :param added - added column
+            :param removed - removed column
+            :param figure path
+        """
+
+        ax = plt.subplots()
+        ax = sns.barplot(x=permissions_df["version_code"], y=permissions_df[added], color='b')
+        ax = sns.barplot(x=permissions_df["version_code"], y=permissions_df[removed], color='r')
+        plt.xticks(rotation=45)
+        plt.savefig(figurepath)
+
+    def visualise_launchers(self, launcher_permissions):
+
+        sns.scatterplot(launcher_permissions, x="version_code", y="permission")
+
+    def visualise_langs(self, presence, fpath):
+        """
+        Visualise language links over time
+
+        :param presence - language dataframe
+        :param fpath - file path to save figure
+        """
+        # Plot
+        fig, ax = plt.subplots(figsize=(16, max(8, len(presence) * 0.25)))
+
+        for i, lang in enumerate(presence.index):
+
+            versions_present = list(
+                presence.columns[presence.loc[lang]]
+            )
+
+            ax.scatter(
+                versions_present,
+                [i] * len(versions_present),
+                s=50,
+                zorder=3
+            )
+
+            if len(versions_present) > 1:
+                ax.plot(
+                    versions_present,
+                    [i] * len(versions_present),
+                    linewidth=2,
+                    alpha=0.7,
+                    zorder=2
+                )
+
+        ax.set_yticks(range(len(presence.index)))
+        ax.set_yticklabels(presence.index)
+
+        ax.set_xlabel("Version")
+        ax.set_ylabel("Language")
+        ax.set_title("Language Support Across Releases")
+
+        plt.xticks(rotation=45)
+        plt.grid(axis="x", alpha=0.2)
+
+        plt.tight_layout()
+        plt.savefig(fpath)
+
+    def visualise_langauge_heat(self, presence, fpath):
+        """
+            heatmap of languaages
+        """
+
+        sns.heatmap(
+            presence.astype(int),
+            cmap=["white", "#2166ac"],
+            cbar=False,
+            linewidths=0.1
+        )
+
+        plt.title("Language Availability Across Versions")
+        plt.xlabel("Version")
+        plt.ylabel("Language")
+        plt.tight_layout()
+        plt.savefig(fpath)
