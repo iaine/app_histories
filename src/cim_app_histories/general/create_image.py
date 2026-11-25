@@ -83,13 +83,43 @@ class Animate():
         sns.scatterplot(launcher_permissions, x="version_code", y="permission")
         plt.savefig(fpath)
 
-    def visualise_langs(self, presence, fpath):
+    def visualise_langs(self, localisation_df, fpath):
         """
         Visualise language links over time
 
         :param presence - language dataframe
         :param fpath - file path to save figure
         """
+        # Split language strings into lists
+        localisation_df["languages"] = (
+            localisation_df["flattened"]
+            .fillna("")
+            .str.split(",")
+            .apply(lambda x: [i.strip() for i in x if i.strip()])
+        )
+
+        # Convert to long format
+        lang_df = (
+            localisation_df[["version_code", "languages"]]
+            .explode("languages")
+            .rename(columns={"languages": "language"})
+            .reset_index(drop=True)
+        )
+
+        # Remove blanks
+        lang_df = lang_df[lang_df["language"].notna()]
+
+        # Build presence matrix
+        presence = pd.crosstab(
+            lang_df["language"],
+            lang_df["version_code"]
+        ).astype(bool)
+
+        # Order languages by first appearance
+        first_seen = {
+            lang: min(presence.columns[presence.loc[lang]])
+            for lang in presence.index
+        }
         # Plot
         fig, ax = plt.subplots(figsize=(16, max(8, len(presence) * 0.25)))
 
@@ -128,7 +158,7 @@ class Animate():
         plt.tight_layout()
         plt.savefig(fpath)
 
-    def visualise_langauge_heat(self, presence, fpath):
+    def visualise_language_heat(self, presence, fpath):
         """
             heatmap of languaages
         """
