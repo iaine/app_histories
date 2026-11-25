@@ -158,10 +158,30 @@ class Animate():
         plt.tight_layout()
         plt.savefig(fpath)
 
-    def visualise_language_heat(self, presence, fpath):
+    def visualise_language_heat(self, localisation_df, fpath):
         """
             heatmap of languaages
         """
+
+        # Assume flattened is a comma-separated string
+        localisation_df["langs"] = localisation_df["flattened"].fillna("").str.split(",")
+
+        # Long format
+        long_df = (
+            localisation_df[["version_code", "langs"]]
+            .explode("langs")
+            .reset_index(drop=True)
+        )
+
+        long_df["langs"] = long_df["langs"].str.strip()
+        long_df = long_df[long_df["langs"] != ""]
+
+        # Presence matrix
+        presence = (
+            pd.crosstab(long_df["langs"], long_df["version_code"])
+            .astype(bool)
+            .astype(int)
+        )
 
         sns.heatmap(
             presence.astype(int),
