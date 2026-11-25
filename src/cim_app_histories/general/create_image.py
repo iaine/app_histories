@@ -78,9 +78,10 @@ class Animate():
         plt.xticks(rotation=45)
         plt.savefig(figurepath)
 
-    def visualise_launchers(self, launcher_permissions):
+    def visualise_launchers(self, launcher_permissions, fpath):
 
         sns.scatterplot(launcher_permissions, x="version_code", y="permission")
+        plt.savefig(fpath)
 
     def visualise_langs(self, presence, fpath):
         """
