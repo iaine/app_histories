@@ -10,7 +10,7 @@ class Helper():
     def __init__(self):
         pass
 
-    def list_difference(a,b):
+    def list_difference(self, a,b):
         return int(len(list(set(a.split(';')) - set(b.split(';')))))
 
     def permissions_changes(self, df, data_category, added, removed):
