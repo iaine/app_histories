@@ -3,11 +3,11 @@ from glob import glob
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.animation as animation
-
-from PIL import Image
 import numpy as np
-
+import pandas as pd
+from PIL import Image
 import seaborn as sns
+
 
 class Animate():
 
