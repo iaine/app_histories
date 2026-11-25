@@ -39,6 +39,7 @@ classifiers = [
 # Plotting/animation stack: not installed on HPC unless requested,
 # keeping cluster environments free of GUI toolkits.
 viz = [
+  "pandas",
   "matplotlib>=3.5",
   "numpy>=1.23",
   "Pillow>=9.0",
