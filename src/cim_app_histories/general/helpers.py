@@ -83,7 +83,7 @@ class Helper():
         if filter_type == "country":
             localisation_df['flattened'] = localisation_df['localisation'].apply(self.country_lang, language=country)
         else:
-            localisation_df['flattened'] = localisation_df['localisation'].apply(self.flatten_list, country=lang)
+            localisation_df['flattened'] = localisation_df['localisation'].apply(self.flatten_list, country=country)
 
         # Split language strings into lists
         localisation_df["languages"] = (
