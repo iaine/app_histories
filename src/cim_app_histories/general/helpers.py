@@ -65,13 +65,13 @@ class Helper():
 
         return launcher_permissions
 
-    def flatten_list(flist, country=""):
+    def flatten_list(self, flist, country=""):
         if country != "":
             return ','.join(list(set( [lang[0] for lang in flist if lang[1] == country] )))
         else:
             return ','.join(list(set( [lang[0] for lang in flist])))
 
-    def country_lang(flist, language=""):
+    def country_lang(self, flist, language=""):
         return ','.join(list(set( [lang[1] for lang in flist if lang[0] == language] )))
 
     def localisation(self, df, filter_type="flatten", lang = "", contry=""):
